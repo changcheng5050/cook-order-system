@@ -1,0 +1,172 @@
+<template>
+  <div class="admin-page">
+    <header class="admin-header">
+      <h1>系统设置</h1>
+      <div class="header-actions">
+        <button class="btn-back" @click="$router.push('/admin/dishes')">菜品</button>
+        <button class="btn-orders" @click="$router.push('/admin/orders')">订单</button>
+        <button class="btn-logout" @click="logout">退出</button>
+      </div>
+    </header>
+
+    <div class="settings-form">
+      <h2>店铺信息</h2>
+
+      <label>店铺名称</label>
+      <input v-model="form.shop_name" placeholder="如：阿旺小厨房" />
+
+      <label>店铺Logo图片</label>
+      <input type="file" accept="image/*" @change="uploadLogo" :disabled="uploading" />
+      <div v-if="form.logo_url" class="logo-preview">
+        <img :src="form.logo_url" />
+        <button @click="form.logo_url = ''; logoChanged = true">移除Logo</button>
+      </div>
+      <p v-if="uploading" class="upload-tip">上传中...</p>
+
+      <button class="btn-save" @click="saveSettings" :disabled="saving">
+        {{ saving ? '保存中...' : '保存设置' }}
+      </button>
+
+      <p v-if="saveMsg" class="save-msg" :style="{ color: saveOk ? 'var(--success)' : 'var(--danger)' }">
+        {{ saveMsg }}
+      </p>
+    </div>
+
+    <!-- 管理员账号管理提示 -->
+    <div class="settings-form" style="margin-top: 20px;">
+      <h2>管理员账号</h2>
+      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
+        如需新增管理员，请在登录页点击"注册"，用新邮箱注册后自动成为管理员。
+      </p>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, inject } from 'vue'
+import { supabase } from '../lib/supabase'
+import { useRouter } from 'vue-router'
+
+const settings = inject('shopSettings')
+const router = useRouter()
+
+const form = ref({
+  shop_name: '阿旺小厨房',
+  logo_url: ''
+})
+const uploading = ref(false)
+const saving = ref(false)
+const saveMsg = ref('')
+const saveOk = ref(true)
+const logoChanged = ref(false)
+
+onMounted(() => {
+  checkAuth()
+  loadSettings()
+})
+
+async function checkAuth() {
+  const { data } = await supabase.auth.getSession()
+  if (!data.session) router.push('/admin')
+}
+
+async function loadSettings() {
+  const { data } = await supabase.from('settings').select('*').single()
+  if (data) {
+    form.value = {
+      shop_name: data.shop_name || '阿旺小厨房',
+      logo_url: data.logo_url || ''
+    }
+  }
+}
+
+async function uploadLogo(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  uploading.value = true
+  const fileName = `logo-${Date.now()}-${file.name}`
+  const { data, error } = await supabase.storage.from('dish-images').upload(fileName, file, { upsert: true })
+  if (!error) {
+    const { data: { publicUrl } } = supabase.storage.from('dish-images').getPublicUrl(fileName)
+    form.value.logo_url = publicUrl
+    logoChanged.value = true
+  } else {
+    alert('上传失败：' + error.message)
+  }
+  uploading.value = false
+}
+
+async function saveSettings() {
+  if (!form.value.shop_name.trim()) {
+    saveMsg.value = '店铺名称不能为空'
+    saveOk.value = false
+    return
+  }
+  saving.value = true
+  saveMsg.value = ''
+  const { error } = await supabase
+    .from('settings')
+    .update({
+      shop_name: form.value.shop_name.trim(),
+      logo_url: form.value.logo_url
+    })
+    .eq('id', 1)
+  saving.value = false
+  if (error) {
+    saveMsg.value = '保存失败：' + error.message
+    saveOk.value = false
+  } else {
+    saveMsg.value = '保存成功！'
+    saveOk.value = true
+    // 同步更新全局状态
+    settings.value = {
+      shop_name: form.value.shop_name.trim(),
+      logo_url: form.value.logo_url
+    }
+  }
+}
+
+async function logout() {
+  await supabase.auth.signOut()
+  router.push('/admin')
+}
+</script>
+
+<style scoped>
+.admin-page { max-width: 480px; margin: 0 auto; padding-bottom: 20px; }
+
+.admin-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 16px; background: var(--primary); color: #fff;
+}
+.admin-header h1 { font-size: 16px; }
+.header-actions { display: flex; gap: 8px; }
+.header-actions button {
+  padding: 4px 10px; border-radius: 6px; font-size: 12px;
+  color: #fff; background: rgba(255,255,255,0.2);
+}
+
+.settings-form { padding: 20px 16px; }
+.settings-form h2 { font-size: 16px; margin-bottom: 16px; }
+.settings-form label { display: block; font-size: 13px; font-weight: 500; margin: 12px 0 4px; }
+.settings-form input[type="text"],
+.settings-form input[type="file"] { margin-bottom: 8px; }
+.settings-form input[type="text"] {
+  width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;
+}
+.logo-preview { margin: 8px 0; }
+.logo-preview img {
+  width: 80px; height: 80px; border-radius: 50%; object-fit: cover;
+  border: 2px solid var(--border);
+}
+.logo-preview button {
+  display: block; margin-top: 6px; font-size: 12px; color: var(--danger); background: none;
+}
+.upload-tip { font-size: 12px; color: var(--text-secondary); }
+.btn-save {
+  width: 100%; padding: 10px; background: var(--primary); color: #fff;
+  border-radius: 8px; font-weight: 500; margin-top: 16px;
+}
+.btn-save:disabled { opacity: 0.6; }
+.save-msg { text-align: center; margin-top: 8px; font-size: 13px; }
+</style>
