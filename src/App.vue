@@ -1,8 +1,5 @@
 <template>
   <div id="app-root">
-    <!-- 版本号：页面顶部右侧 -->
-    <div class="version-badge">v{{ version }}</div>
-
     <!-- 管理员左侧导航（仅管理员已登录且在管理页面时显示） -->
     <aside v-if="isAdminPage && isAdmin" class="admin-sidebar">
       <div class="sidebar-logo">
@@ -105,19 +102,6 @@ function logout() {
 }
 
 /* 版本号：页面顶部右侧 */
-.version-badge {
-  position: fixed;
-  top: 6px;
-  right: 10px;
-  z-index: 999;
-  font-size: 11px;
-  color: rgba(255,255,255,0.7);
-  background: rgba(0,0,0,0.2);
-  padding: 2px 8px;
-  border-radius: 10px;
-  pointer-events: none;
-}
-
 .admin-sidebar {
   position: fixed;
   left: 0;

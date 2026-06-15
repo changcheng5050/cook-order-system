@@ -4,6 +4,7 @@
     <header class="top-bar">
       <img v-if="settings.logo_url" :src="settings.logo_url" class="logo" />
       <h1>{{ settings.shop_name }}</h1>
+      <span class="version-in-header">{{ version }}</span>
     </header>
 
         <div v-if="!customerName || showSuccess" class="name-modal">
@@ -39,7 +40,7 @@
         <button
           v-for="cat in categories"
           :key="cat"
-          :class="['cat-btn', { active: activeCategory === cat }]"
+          :class="['cat-btn', 'cat-' + cat, { active: activeCategory === cat }]"
           @click="activeCategory = cat"
         >{{ cat }}</button>
       </nav>
@@ -50,7 +51,7 @@
           <div class="dish-img" @click="showDishDetail(dish)">
             <img v-if="dish.image_url" :src="dish.image_url" />
             <div v-else class="img-placeholder">暂无图片</div>
-            <span :class="['temp-tag', 'temp-' + (dish.temperature || 'other')]">{{ dish.temperature }}</span>
+            <span v-if="dish.category" :class="['cat-tag', 'cat-' + dish.category]">{{ dish.category }}</span>
           </div>
           <div class="dish-info">
             <h3>{{ dish.name }}</h3>
@@ -111,6 +112,7 @@
         <div v-if="expandedOrderId === order.id" class="order-detail">
           <p><strong>菜品：</strong></p>
           <div v-for="item in order.dishes" :key="item.id" class="detail-dish-item">
+            <span v-if="item.category" class="detail-cat-tag">{{ item.category }}</span>
             <strong>{{ item.name }}</strong> · {{ item.cook_time }}分钟
             <span v-if="item.customer_note" class="detail-note">（备注：{{ item.customer_note }}）</span>
           </div>
@@ -278,12 +280,12 @@ import { supabase } from '../lib/supabase'
 import { useCart } from '../lib/cart'
 
 const settings = inject('shopSettings')
-const version = ref('v2.0.1')
+const version = ref('v2.0.3')
 
 // 页签状态
 const currentTab = ref('menu')
 
-const categories = ['全部', '荤菜', '素菜', '汤类', '粉面类', '主食']
+const categories = ['全部', '荤菜', '素菜', '汤类', '粉面类']
 const activeCategory = ref('全部')
 const dishes = ref([])
 const customerName = ref('')
@@ -451,6 +453,7 @@ async function submitOrder() {
   const orderDishes = cartItems.value.map(item => ({
     id: item.id,
     name: item.name,
+    category: item.category || '',
     cook_time: item.cook_time,
     image_url: item.image_url,
     ingredients: item.ingredients || [],
@@ -533,7 +536,13 @@ function orderAgain() {
   padding: 12px 16px; background: var(--primary); color: #fff;
 }
 .top-bar .logo { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
-.top-bar h1 { font-size: 18px; font-weight: 600; }
+.top-bar h1 { font-size: 18px; font-weight: 600; flex: 1; }
+.version-in-header {
+  font-size: 11px; color: rgba(255,255,255,0.75);
+  background: rgba(0,0,0,0.18);
+  padding: 3px 8px; border-radius: 10px;
+  white-space: nowrap; flex-shrink: 0;
+}
 
 /* 页签导航 */
 .tab-nav {
@@ -592,8 +601,16 @@ function orderAgain() {
 .cat-btn {
   white-space: nowrap; padding: 6px 14px; border-radius: 20px;
   background: var(--bg); color: var(--text); font-size: 13px;
+  border: 1.5px solid transparent;
 }
-.cat-btn.active { background: var(--primary); color: #fff; }
+.cat-btn.cat-荤菜 { color: #e53935; border-color: rgba(229,57,53,0.45); background: rgba(229,57,53,0.08); }
+.cat-btn.cat-荤菜.active { background: #e53935; color: #fff; border-color: #e53935; }
+.cat-btn.cat-素菜 { color: #43a047; border-color: rgba(67,160,71,0.45); background: rgba(67,160,71,0.08); }
+.cat-btn.cat-素菜.active { background: #43a047; color: #fff; border-color: #43a047; }
+.cat-btn.cat-汤类 { color: #1e88e5; border-color: rgba(30,136,229,0.45); background: rgba(30,136,229,0.08); }
+.cat-btn.cat-汤类.active { background: #1e88e5; color: #fff; border-color: #1e88e5; }
+.cat-btn.cat-粉面类 { color: #f57c00; border-color: rgba(245,124,0,0.45); background: rgba(245,124,0,0.08); }
+.cat-btn.cat-粉面类.active { background: #f57c00; color: #fff; border-color: #f57c00; }
 
 /* 菜品卡片 */
 .dish-list { padding: 12px; display: grid; gap: 12px; }
@@ -611,18 +628,16 @@ function orderAgain() {
   display: flex; align-items: center; justify-content: center;
   font-size: 11px; color: #aaa;
 }
-.temp-tag {
+/* 菜品分类角标（左上角） */
+.cat-tag {
   position: absolute; top: 4px; left: 4px;
   font-size: 10px; padding: 2px 6px; border-radius: 4px;
   color: #fff; font-weight: 500;
 }
-.temp-tag.temp-热菜 { background: #e53935; }
-.temp-tag.temp-凉菜 { background: #43a047; }
-.temp-tag.temp-汤类 { background: #1e88e5; }
-.temp-tag.temp-甜品 { background: #8e24aa; }
-.temp-tag.temp-主食 { background: #f57c00; }
-.temp-tag.temp-粉面类 { background: #f57c00; }
-.temp-tag.temp-other { background: rgba(0,0,0,0.55); }
+.cat-tag.cat-荤菜 { background: rgba(229,57,53,0.78); }
+.cat-tag.cat-素菜 { background: rgba(67,160,71,0.78); }
+.cat-tag.cat-汤类 { background: rgba(30,136,229,0.78); }
+.cat-tag.cat-粉面类 { background: rgba(245,124,0,0.78); }
 .dish-info { flex: 1; min-width: 0; }
 .dish-info h3 { font-size: 15px; margin-bottom: 4px; }
 .flavor-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 4px; }
@@ -802,7 +817,15 @@ function orderAgain() {
   font-size: 13px;
 }
 .order-detail h4 { font-size: 13px; margin: 8px 0 4px; color: var(--primary); }
-.detail-dish-item { padding: 4px 0; font-size: 13px; }
+.detail-dish-item { padding: 4px 0; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+.detail-cat-tag {
+  font-size: 10px; padding: 1px 6px; border-radius: 4px;
+  font-weight: 500; color: #fff; flex-shrink: 0;
+}
+.detail-cat-tag.cat-荤菜 { background: rgba(229,57,53,0.82); }
+.detail-cat-tag.cat-素菜 { background: rgba(67,160,71,0.82); }
+.detail-cat-tag.cat-汤类 { background: rgba(30,136,229,0.82); }
+.detail-cat-tag.cat-粉面类 { background: rgba(245,124,0,0.82); }
 .detail-note { font-size: 11px; color: #e55a2b; }
 .detail-total { font-weight: 500; margin-top: 6px; }
 .detail-note-full { font-size: 12px; color: var(--text-secondary); margin-top: 6px; background: #f9f9f9; padding: 6px; border-radius: 6px; }
