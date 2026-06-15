@@ -8,6 +8,7 @@
         <button class="btn-nav" @click="$router.push('/admin/orders')">订单</button>
         <button class="btn-nav" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
+        <span class="version-badge">v2.0.6</span>
       </div>
     </header>
 
@@ -140,6 +141,11 @@ async function deleteCustomer(c) {
   padding: 4px 9px; border-radius: 6px; font-size: 12px;
   color: #fff; background: rgba(255,255,255,0.15);
   border: 1px solid rgba(255,255,255,0.3);
+}
+.top-nav .version-badge {
+  font-size: 11px; color: rgba(255,255,255,0.7);
+  background: rgba(0,0,0,0.18); padding: 2px 8px; border-radius: 10px;
+  white-space: nowrap; margin-left: 4px;
 }
 
 .add-section {

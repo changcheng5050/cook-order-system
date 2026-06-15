@@ -112,9 +112,13 @@
         <div v-if="expandedOrderId === order.id" class="order-detail">
           <p><strong>菜品：</strong></p>
           <div v-for="item in order.dishes" :key="item.id" class="detail-dish-item">
-            <span v-if="item.category" class="detail-cat-tag">{{ item.category }}</span>
-            <strong>{{ item.name }}</strong> · {{ item.cook_time }}分钟
-            <span v-if="item.customer_note" class="detail-note">（备注：{{ item.customer_note }}）</span>
+            <img v-if="item.image_url" :src="item.image_url" class="detail-dish-img" />
+            <div v-else class="detail-dish-ph"></div>
+            <div class="detail-dish-info">
+              <span v-if="item.category" :class="['detail-cat-tag', 'cat-' + item.category]">{{ item.category }}</span>
+              <strong>{{ item.name }}</strong> · {{ item.cook_time }}分钟
+              <span v-if="item.customer_note" class="detail-note">（备注：{{ item.customer_note }}）</span>
+            </div>
           </div>
           <p class="detail-total">共 {{ order.dishes.length }} 道菜，约 {{ order.total_time }} 分钟</p>
           <p v-if="order.note" class="detail-note-full">订单备注：{{ order.note }}</p>
@@ -135,8 +139,13 @@
       <div class="modal-box cart-modal">
         <h2>我的购物车</h2>
         <div v-for="item in cartItems" :key="item.id" class="cart-item">
+          <img v-if="item.image_url" :src="item.image_url" class="cart-item-img" />
+          <div v-else class="cart-item-img-ph"></div>
           <div class="cart-item-info">
-            <h4>{{ item.name }}</h4>
+            <h4>
+              <span v-if="item.category" :class="['detail-cat-tag', 'cat-' + item.category]">{{ item.category }}</span>
+              {{ item.name }}
+            </h4>
             <p class="cart-item-time">{{ item.cook_time }}分钟</p>
           </div>
           <input
@@ -144,7 +153,7 @@
             placeholder="备注（如：不要葱姜）"
             class="cart-note-input"
           />
-          <button class="remove-btn" @click="removeFromCart(item.id)">✕</button>
+          <button class="remove-btn-circle" @click="removeFromCart(item.id)">−</button>
         </div>
 
         <!-- 期望用餐时间 -->
@@ -280,7 +289,7 @@ import { supabase } from '../lib/supabase'
 import { useCart } from '../lib/cart'
 
 const settings = inject('shopSettings')
-const version = ref('v2.0.5')
+const version = ref('v2.0.6')
 
 // 页签状态
 const currentTab = ref('menu')
@@ -698,16 +707,21 @@ function orderAgain() {
   display: flex; align-items: center; gap: 8px; padding: 10px 0;
   border-bottom: 1px solid var(--border);
 }
-.cart-item-info { flex: 1; }
-.cart-item-info h4 { font-size: 14px; }
+.cart-item-img { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+.cart-item-img-ph { width: 40px; height: 40px; border-radius: 8px; background: #f0f0f0; flex-shrink: 0; }
+.cart-item-info { flex: 1; min-width: 0; }
+.cart-item-info h4 { font-size: 13px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .cart-item-time { font-size: 12px; color: var(--text-secondary); }
 .cart-note-input {
   flex: 1; padding: 6px; border: 1px solid #ddd; border-radius: 6px;
   font-size: 12px;
 }
-.remove-btn {
-  width: 24px; height: 24px; border-radius: 50%; background: #f0f0f0;
-  color: #999; font-size: 12px; flex-shrink: 0; cursor: pointer;
+.remove-btn-circle {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: #fff; border: 2px solid #ff4d4f;
+  color: #ff4d4f; font-size: 18px; font-weight: 700;
+  flex-shrink: 0; cursor: pointer; display: flex;
+  align-items: center; justify-content: center; line-height: 1;
 }
 .expected-time-section { margin-top: 12px; }
 .expected-time-section label { font-size: 13px; font-weight: 500; display: block; margin-bottom: 4px; }
@@ -828,6 +842,9 @@ function orderAgain() {
 .detail-cat-tag.cat-素菜 { background: rgba(67,160,71,0.82); }
 .detail-cat-tag.cat-汤类 { background: rgba(30,136,229,0.82); }
 .detail-cat-tag.cat-粉面类 { background: rgba(245,124,0,0.82); }
+.detail-dish-img { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
+.detail-dish-ph { width: 36px; height: 36px; border-radius: 6px; background: #f0f0f0; flex-shrink: 0; }
+.detail-dish-info { flex: 1; min-width: 0; }
 .detail-note { font-size: 11px; color: #e55a2b; }
 .detail-total { font-weight: 500; margin-top: 6px; }
 .detail-note-full { font-size: 12px; color: var(--text-secondary); margin-top: 6px; background: #f9f9f9; padding: 6px; border-radius: 6px; }

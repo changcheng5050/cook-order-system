@@ -8,6 +8,7 @@
         <button class="btn-nav" @click="$router.push('/admin/orders')">订单</button>
         <button class="btn-settings active-nav" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
+        <span class="version-badge">v2.0.6</span>
       </div>
     </header>
 
@@ -158,6 +159,11 @@ async function logout() {
 .header-actions .btn-settings.active-nav { background: rgba(255,255,255,0.4); font-weight: 600; }
 .header-actions .btn-logout {
   background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+}
+.header-actions .version-badge {
+  font-size: 11px; color: rgba(255,255,255,0.7);
+  background: rgba(0,0,0,0.18); padding: 2px 8px; border-radius: 10px;
+  white-space: nowrap; margin-left: 4px;
 }
 
 .settings-form { padding: 20px 16px; }

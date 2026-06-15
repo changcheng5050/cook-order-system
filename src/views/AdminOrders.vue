@@ -8,6 +8,7 @@
         <button class="btn-nav active-nav" @click="$router.push('/admin/orders')">订单</button>
         <button class="btn-settings" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
+        <span class="version-badge">v2.0.6</span>
       </div>
     </header>
 
@@ -39,6 +40,7 @@
           <p v-if="order.customer_address" class="customer-info">地址：{{ order.customer_address }}</p>
           <h4>菜品：</h4>
           <div v-for="d in order.dishes" :key="d.id" class="detail-row">
+            <img v-if="d.image_url" :src="d.image_url" class="admin-detail-dish-img" />
             <span v-if="d.category" :class="['detail-cat-tag', 'cat-' + d.category]">{{ d.category }}</span>
             <span>{{ d.name }}（{{ d.cook_time }}分钟）</span>
             <span v-if="d.customer_note" class="detail-note">{{ d.customer_note }}</span>
@@ -189,6 +191,11 @@ async function logout() {
 .header-actions .btn-logout {
   background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
 }
+.header-actions .version-badge {
+  font-size: 11px; color: rgba(255,255,255,0.7);
+  background: rgba(0,0,0,0.18); padding: 2px 8px; border-radius: 10px;
+  white-space: nowrap; margin-left: 4px;
+}
 
 .toolbar {
   display: flex; gap: 8px; padding: 10px 16px; background: #fff;
@@ -240,6 +247,7 @@ async function logout() {
 .customer-info { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
 
 .detail-row { padding: 4px 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.admin-detail-dish-img { width: 32px; height: 32px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
 .detail-cat-tag {
   font-size: 10px; padding: 1px 7px; border-radius: 4px;
   font-weight: 500; color: #fff; flex-shrink: 0;
