@@ -3,8 +3,10 @@
     <header class="admin-header">
       <h1>系统设置</h1>
       <div class="header-actions">
-        <button class="btn-back" @click="$router.push('/admin/dishes')">菜品</button>
-        <button class="btn-orders" @click="$router.push('/admin/orders')">订单</button>
+        <button class="btn-nav" @click="$router.push('/admin/dishes')">菜品</button>
+        <button class="btn-nav" @click="$router.push('/admin/customers')">客户</button>
+        <button class="btn-nav" @click="$router.push('/admin/orders')">订单</button>
+        <button class="btn-settings active-nav" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
       </div>
     </header>
@@ -91,7 +93,12 @@ async function uploadLogo(e) {
     form.value.logo_url = publicUrl
     logoChanged.value = true
   } else {
-    alert('上传失败：' + error.message)
+    console.error('上传Logo失败:', error)
+    let msg = '上传失败：' + error.message
+    if (error.message.includes('Bucket not found') || error.message.includes('bucket')) {
+      msg = '存储桶不存在！请在 Supabase SQL Editor 执行 supabase/init-storage.sql 脚本'
+    }
+    alert(msg)
   }
   uploading.value = false
 }
@@ -140,10 +147,17 @@ async function logout() {
   padding: 12px 16px; background: var(--primary); color: #fff;
 }
 .admin-header h1 { font-size: 16px; }
-.header-actions { display: flex; gap: 8px; }
+.header-actions { display: flex; gap: 6px; align-items: center; }
 .header-actions button {
   padding: 4px 10px; border-radius: 6px; font-size: 12px;
-  color: #fff; background: rgba(255,255,255,0.2);
+  color: #fff; background: rgba(255,255,255,0.2); border: none;
+}
+.header-actions .btn-nav { background: rgba(255,255,255,0.18); }
+.header-actions .btn-nav.active-nav { background: rgba(255,255,255,0.4); font-weight: 600; }
+.header-actions .btn-settings { background: rgba(255,255,255,0.2); }
+.header-actions .btn-settings.active-nav { background: rgba(255,255,255,0.4); font-weight: 600; }
+.header-actions .btn-logout {
+  background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
 }
 
 .settings-form { padding: 20px 16px; }

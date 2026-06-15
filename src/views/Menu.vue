@@ -280,7 +280,7 @@ import { supabase } from '../lib/supabase'
 import { useCart } from '../lib/cart'
 
 const settings = inject('shopSettings')
-const version = ref('v2.0.3')
+const version = ref('v2.0.5')
 
 // 页签状态
 const currentTab = ref('menu')
@@ -603,6 +603,8 @@ function orderAgain() {
   background: var(--bg); color: var(--text); font-size: 13px;
   border: 1.5px solid transparent;
 }
+.cat-btn.cat-全部 { color: var(--primary); border-color: rgba(255,107,53,0.45); background: rgba(255,107,53,0.08); }
+.cat-btn.cat-全部.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 .cat-btn.cat-荤菜 { color: #e53935; border-color: rgba(229,57,53,0.45); background: rgba(229,57,53,0.08); }
 .cat-btn.cat-荤菜.active { background: #e53935; color: #fff; border-color: #e53935; }
 .cat-btn.cat-素菜 { color: #43a047; border-color: rgba(67,160,71,0.45); background: rgba(67,160,71,0.08); }
@@ -800,12 +802,12 @@ function orderAgain() {
 .expected-badge {
   display: inline-block;
   font-size: 12px;
-  font-weight: 600;
-  color: #d32f2f;
-  background: linear-gradient(135deg, #ffebee, #fce4ec);
+  font-weight: 500;
+  color: #1b7e3e;
+  background: linear-gradient(135deg, #e8f5e9, #f1f8e9);
   padding: 4px 10px;
-  border-radius: 20px;
-  border: 1.5px solid #ef9a9a;
+  border-radius: 4px;
+  border: 1.5px solid #a5d6a7;
   margin-left: 4px;
 }
 .order-arrow { margin-left: auto; color: #ccc; font-size: 10px; }

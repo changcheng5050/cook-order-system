@@ -3,7 +3,9 @@
     <header class="admin-header">
       <h1>客户订单</h1>
       <div class="header-actions">
-        <button class="btn-back" @click="$router.push('/admin/dishes')">菜品</button>
+        <button class="btn-nav" @click="$router.push('/admin/dishes')">菜品</button>
+        <button class="btn-nav" @click="$router.push('/admin/customers')">客户</button>
+        <button class="btn-nav active-nav" @click="$router.push('/admin/orders')">订单</button>
         <button class="btn-settings" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
       </div>
@@ -176,10 +178,16 @@ async function logout() {
   padding: 12px 16px; background: var(--primary); color: #fff;
 }
 .admin-header h1 { font-size: 16px; }
-.header-actions { display: flex; gap: 8px; }
+.header-actions { display: flex; gap: 6px; align-items: center; }
 .header-actions button {
   padding: 4px 10px; border-radius: 6px; font-size: 12px;
-  color: #fff; background: rgba(255,255,255,0.2);
+  color: #fff; background: rgba(255,255,255,0.2); border: none;
+}
+.header-actions .btn-nav { background: rgba(255,255,255,0.18); }
+.header-actions .btn-nav.active-nav { background: rgba(255,255,255,0.4); font-weight: 600; }
+.header-actions .btn-settings { background: rgba(255,255,255,0.2); }
+.header-actions .btn-logout {
+  background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
 }
 
 .toolbar {
@@ -213,12 +221,12 @@ async function logout() {
 .expected-badge {
   display: inline-block;
   font-size: 13px;
-  font-weight: 600;
-  color: #d32f2f;
-  background: linear-gradient(135deg, #ffebee, #fce4ec);
+  font-weight: 500;
+  color: #1b7e3e;
+  background: linear-gradient(135deg, #e8f5e9, #f1f8e9);
   padding: 5px 12px;
-  border-radius: 20px;
-  border: 1.5px solid #ef9a9a;
+  border-radius: 4px;
+  border: 1.5px solid #a5d6a7;
   margin-left: 4px;
 }
 .order-arrow { margin-left: auto; color: #ccc; font-size: 10px; }
@@ -253,14 +261,14 @@ async function logout() {
 }
 
 .btn-delete-order {
-  width: 100%;
-  margin-top: 14px;
-  padding: 10px;
-  border-radius: 8px;
+  display: inline-block;
+  margin-top: 10px;
+  padding: 5px 14px;
+  border-radius: 6px;
   background: #fff2f0;
   color: #cf1322;
-  border: 1.5px solid #ffa39e;
-  font-size: 13px;
+  border: 1px solid #ffccc7;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;

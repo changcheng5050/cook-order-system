@@ -1,9 +1,14 @@
 <template>
   <div class="admin-customers">
     <header class="admin-top">
-      <button class="back-btn" @click="$router.push('/admin/dishes')">← 返回</button>
       <h2>客户管理</h2>
-      <div></div>
+      <div class="top-nav">
+        <button class="btn-nav" @click="$router.push('/admin/dishes')">菜品</button>
+        <button class="btn-nav active-nav" @click="$router.push('/admin/customers')">客户</button>
+        <button class="btn-nav" @click="$router.push('/admin/orders')">订单</button>
+        <button class="btn-nav" @click="$router.push('/admin/settings')">设置</button>
+        <button class="btn-logout" @click="logout">退出</button>
+      </div>
     </header>
 
     <!-- 新增客户表单 -->
@@ -120,10 +125,22 @@ async function deleteCustomer(c) {
 
 .admin-top {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 16px; background: var(--primary); color: #fff;
+  padding: 10px 16px; background: var(--primary); color: #fff;
 }
 .admin-top h2 { font-size: 16px; }
-.back-btn { background: none; color: #fff; font-size: 14px; }
+.top-nav { display: flex; gap: 5px; align-items: center; }
+.top-nav .btn-nav {
+  padding: 4px 9px; border-radius: 6px; font-size: 12px;
+  color: #fff; background: rgba(255,255,255,0.18); border: none;
+}
+.top-nav .btn-nav.active-nav {
+  background: rgba(255,255,255,0.4); font-weight: 600;
+}
+.top-nav .btn-logout {
+  padding: 4px 9px; border-radius: 6px; font-size: 12px;
+  color: #fff; background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+}
 
 .add-section {
   background: #fff; margin: 12px; border-radius: 12px; padding: 16px;
