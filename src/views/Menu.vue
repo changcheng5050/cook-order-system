@@ -6,13 +6,14 @@
       <h1>{{ settings.shop_name }}</h1>
     </header>
 
-    <!-- 客户姓名输入 -->
+    <!-- 客户姓名输入（白名单验证） -->
     <div v-if="!customerName" class="name-modal">
       <div class="name-box">
         <h2>欢迎光临</h2>
         <p>请输入您的姓名，开始点餐</p>
-        <input v-model="nameInput" placeholder="请输入姓名" @keyup.enter="saveName" />
-        <button @click="saveName">进入菜单</button>
+        <input v-model="nameInput" placeholder="请输入姓名" @keyup.enter="verifyName" />
+        <p v-if="nameError" class="name-error">{{ nameError }}</p>
+        <button @click="verifyName">进入菜单</button>
       </div>
     </div>
 
@@ -59,7 +60,7 @@
         <span>已选 {{ cartItems.length }} 道菜</span>
         <span>约 {{ getTotalTime() }} 分钟</span>
       </div>
-      <button class="cart-submit" @click.stop="submitOrder">提交订单</button>
+      <button class="cart-submit" @click.stop="openCart">查看购物车</button>
     </div>
 
     <!-- 购物车弹窗 -->
@@ -79,12 +80,18 @@
           <button class="remove-btn" @click="removeFromCart(item.id)">✕</button>
         </div>
 
+        <!-- 期望用餐时间 -->
+        <div class="expected-time-section">
+          <label>期望用餐时间 <span class="required">*</span></label>
+          <input type="datetime-local" v-model="expectedTime" class="time-input" required />
+        </div>
+
         <!-- 订单整体备注 -->
         <div class="order-note-section">
           <label>订单备注（选填）</label>
           <textarea
             v-model="orderNote"
-            placeholder="如：今天有老人，口味清淡些；请在6点前做完"
+            placeholder="如：今天有老人，口味清淡些"
             class="order-note-input"
           ></textarea>
         </div>
@@ -127,7 +134,7 @@
       <div class="success-header">
         <div class="success-icon">✅</div>
         <h2>下单成功！</h2>
-        <p>厨师会尽快确认您的订单</p>
+        <p v-if="successOrder.expected_time">期望用餐时间：{{ formatDateTime(successOrder.expected_time) }}</p>
       </div>
 
       <div class="success-section">
@@ -213,12 +220,14 @@ const activeCategory = ref('全部')
 const dishes = ref([])
 const customerName = ref('')
 const nameInput = ref('')
+const nameError = ref('')
 const showCart = ref(false)
 const showDetail = ref(false)
 const detailDish = ref({})
 const showIngredients = ref(false)
 const showSeasonings = ref(false)
 const orderNote = ref('')
+const expectedTime = ref('')
 const showSuccess = ref(false)
 const successOrder = ref({ dishes: [], total_time: 0 })
 const successIngredients = ref([])
@@ -227,10 +236,41 @@ const successSeasonings = ref([])
 const { cartItems, addToCart, removeFromCart, clearCart, getTotalTime } = useCart()
 
 onMounted(() => {
+  const params = new URLSearchParams(window.location.search)
+  const urlName = params.get('customer')
   const saved = localStorage.getItem('cook_customer_name')
-  if (saved) customerName.value = saved
-  loadDishes()
+  if (urlName) {
+    customerName.value = urlName
+    localStorage.setItem('cook_customer_name', urlName)
+    loadDishes()
+  } else if (saved) {
+    customerName.value = saved
+    loadDishes()
+  }
+  // 默认期望时间为今天 18:00
+  const d = new Date()
+  d.setHours(18, 0, 0, 0)
+  expectedTime.value = d.toISOString().slice(0, 16)
 })
+
+async function verifyName() {
+  const name = nameInput.value.trim()
+  if (!name) return
+  // 查 customers 表验证姓名是否存在
+  const { data, error } = await supabase
+    .from('customers')
+    .select('name')
+    .eq('name', name)
+    .single()
+  if (error || !data) {
+    nameError.value = '姓名不存在，请联系厨师添加'
+    return
+  }
+  customerName.value = name
+  localStorage.setItem('cook_customer_name', name)
+  nameError.value = ''
+  loadDishes()
+}
 
 async function loadDishes() {
   const { data, error } = await supabase
@@ -241,12 +281,6 @@ async function loadDishes() {
   if (!error) dishes.value = data || []
 }
 
-function saveName() {
-  if (!nameInput.value.trim()) return
-  customerName.value = nameInput.value.trim()
-  localStorage.setItem('cook_customer_name', customerName.value)
-}
-
 function isInCart(dishId) {
   return cartItems.value.some(item => item.id === dishId)
 }
@@ -254,6 +288,10 @@ function isInCart(dishId) {
 function showDishDetail(dish) {
   detailDish.value = dish
   showDetail.value = true
+}
+
+function openCart() {
+  showCart.value = true
 }
 
 const filteredDishes = computed(() => {
@@ -291,6 +329,10 @@ const allSeasonings = computed(() => {
 
 async function submitOrder() {
   if (cartItems.value.length === 0) return
+  if (!expectedTime.value) {
+    alert('请选择期望用餐时间')
+    return
+  }
   const orderDishes = cartItems.value.map(item => ({
     id: item.id,
     name: item.name,
@@ -304,7 +346,8 @@ async function submitOrder() {
     customer_name: customerName.value,
     dishes: orderDishes,
     total_time: getTotalTime(),
-    note: orderNote.value.trim() || null
+    note: orderNote.value.trim() || null,
+    expected_time: expectedTime.value
   }).select().single()
   if (error) {
     alert('提交失败：' + error.message)
@@ -314,22 +357,13 @@ async function submitOrder() {
   successOrder.value = {
     dishes: orderDishes,
     total_time: getTotalTime(),
-    note: orderNote.value.trim() || ''
+    note: orderNote.value.trim() || '',
+    expected_time: expectedTime.value
   }
-  // 从数据库查回完整菜品信息（含食材调料）用于展示
-  const dishIds = orderDishes.map(d => d.id)
-  const { data: fullDishes } = await supabase
-    .from('dishes')
-    .select('id, ingredients, seasonings')
-    .in('id', dishIds)
-  const dishMap = {}
-  ;(fullDishes || []).forEach(d => { dishMap[d.id] = d })
-
   // 汇总食材
   const ingMap = {}
   orderDishes.forEach(item => {
-    const fd = dishMap[item.id]
-    ;(fd?.ingredients || []).forEach(ing => {
+    ;(item.ingredients || []).forEach(ing => {
       if (ingMap[ing.name]) {
         ingMap[ing.name].amount += ' + ' + ing.amount
       } else {
@@ -342,8 +376,7 @@ async function submitOrder() {
   // 汇总调料
   const seaMap = {}
   orderDishes.forEach(item => {
-    const fd = dishMap[item.id]
-    ;(fd?.seasonings || []).forEach(s => {
+    ;(item.seasonings || []).forEach(s => {
       if (seaMap[s.name]) {
         seaMap[s.name].amount += ' + ' + s.amount
       } else {
@@ -355,9 +388,15 @@ async function submitOrder() {
 
   clearCart()
   orderNote.value = ''
+  expectedTime.value = ''
   showCart.value = false
   showSuccess.value = true
   window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function formatDateTime(dt) {
+  const d = new Date(dt)
+  return `${d.getMonth()+1}月${d.getDate()}日 ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`
 }
 
 function goHistory() {
@@ -390,11 +429,12 @@ function orderAgain() {
 .name-box p { color: #888; margin-bottom: 16px; font-size: 13px; }
 .name-box input {
   width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
+.name-error { color: #e55a2b; font-size: 12px; margin-bottom: 8px; }
 .name-box button {
   width: 100%; padding: 10px; background: var(--primary); color: #fff;
-  border-radius: 8px; font-weight: 500;
+  border-radius: 8px; font-weight: 500; margin-top: 4px;
 }
 
 .category-nav {
@@ -446,7 +486,7 @@ function orderAgain() {
   position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
   width: 100%; max-width: 480px; background: #fff;
   border-top: 1px solid var(--border); padding: 10px 16px;
-  display: flex; align-items: center; gap: 12px; z-index: 50;
+  display: flex; align-items: center; gap: 12px; z-index: 50; cursor: pointer;
 }
 .cart-icon { position: relative; font-size: 24px; }
 .cart-count {
@@ -483,6 +523,13 @@ function orderAgain() {
 .remove-btn {
   width: 24px; height: 24px; border-radius: 50%; background: #f0f0f0;
   color: #999; font-size: 12px; flex-shrink: 0;
+}
+.expected-time-section { margin-top: 12px; }
+.expected-time-section label { font-size: 13px; font-weight: 500; display: block; margin-bottom: 4px; }
+.required { color: #e55a2b; }
+.time-input {
+  width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px;
+  font-size: 14px;
 }
 .order-note-section { margin-top: 12px; }
 .order-note-section label { font-size: 13px; font-weight: 500; display: block; margin-bottom: 4px; }

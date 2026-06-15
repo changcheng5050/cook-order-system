@@ -22,7 +22,9 @@
       <div v-for="order in filteredOrders" :key="order.id" class="order-card" @click="toggleOrder(order.id)">
         <div class="order-header">
           <span class="order-name">👤 {{ order.customer_name }}</span>
+          <span v-if="order.customer_phone" class="order-phone">📱 {{ order.customer_phone }}</span>
           <span class="order-date">{{ formatDate(order.created_at) }}</span>
+          <span v-if="order.expected_time" class="order-time">🕐 {{ formatDateTime(order.expected_time) }}</span>
           <span class="order-arrow">{{ expandedOrder === order.id ? '▲' : '▼' }}</span>
         </div>
         <div class="order-summary">
@@ -31,6 +33,8 @@
 
         <!-- 展开详情 -->
         <div v-if="expandedOrder === order.id" class="order-detail">
+          <p v-if="order.customer_phone" class="customer-info">📱 手机号：{{ order.customer_phone }}</p>
+          <p v-if="order.customer_address" class="customer-info">🏠 地址：{{ order.customer_address }}</p>
           <h4>菜品：</h4>
           <div v-for="d in order.dishes" :key="d.id" class="detail-row">
             <span>{{ d.name }}（{{ d.cook_time }}分钟）</span>
@@ -89,11 +93,26 @@ async function checkAuth() {
 }
 
 async function loadOrders() {
-  const { data, error } = await supabase
+  // 先查订单
+  const { data: orderData, error } = await supabase
     .from('orders')
     .select('*')
     .order('created_at', { ascending: false })
-  if (!error) orders.value = data || []
+  if (error) return
+  // 再查所有客户，做 name -> info 映射
+  const { data: custData } = await supabase
+    .from('customers')
+    .select('name, phone, address')
+  const custMap = {}
+  ;(custData || []).forEach(c => {
+    custMap[c.name] = { phone: c.phone || '', address: c.address || '' }
+  })
+  // 合并客户信息到订单
+  orders.value = (orderData || []).map(o => ({
+    ...o,
+    customer_phone: custMap[o.customer_name]?.phone || '',
+    customer_address: custMap[o.customer_name]?.address || ''
+  }))
 }
 
 function toggleOrder(id) {
@@ -102,6 +121,12 @@ function toggleOrder(id) {
 
 function formatDate(dateStr) {
   const d = new Date(dateStr)
+  return `${d.getMonth()+1}月${d.getDate()}日 ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`
+}
+
+function formatDateTime(dt) {
+  if (!dt) return ''
+  const d = new Date(dt)
   return `${d.getMonth()+1}月${d.getDate()}日 ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`
 }
 
@@ -177,10 +202,12 @@ async function logout() {
 }
 .order-header {
   display: flex; gap: 10px; align-items: center; font-size: 13px;
-  margin-bottom: 4px;
+  margin-bottom: 4px; flex-wrap: wrap;
 }
 .order-name { font-weight: 500; }
+.order-phone { font-size: 12px; color: var(--text-secondary); }
 .order-date { color: var(--text-secondary); font-size: 12px; }
+.order-time { font-size: 12px; color: var(--primary); }
 .order-arrow { margin-left: auto; color: #ccc; font-size: 10px; }
 .order-summary { font-size: 12px; color: var(--text-secondary); }
 
@@ -189,6 +216,7 @@ async function logout() {
   font-size: 13px;
 }
 .order-detail h4 { font-size: 13px; margin: 8px 0 4px; color: var(--primary); }
+.customer-info { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
 .detail-row { padding: 4px 0; }
 .detail-note { font-size: 11px; color: #e55a2b; margin-left: 8px; }
 .summary-row {

@@ -5,10 +5,11 @@
       <h1>{{ settings.shop_name }}</h1>
     </header>
 
-    <!-- 客户姓名 -->
+    <!-- 客户姓名输入（白名单验证） -->
     <div v-if="!customerName" class="name-section">
-      <input v-model="nameInput" placeholder="请输入您的姓名" @keyup.enter="saveName" />
-      <button @click="saveName">查看历史</button>
+      <input v-model="nameInput" placeholder="请输入您的姓名" @keyup.enter="verifyName" />
+      <p v-if="nameError" class="name-error">{{ nameError }}</p>
+      <button @click="verifyName">查看历史</button>
     </div>
 
     <div v-else>
@@ -26,7 +27,8 @@
         <div v-for="order in orders" :key="order.id" class="order-card" @click="toggleOrder(order.id)">
           <div class="order-header">
             <span class="order-date">{{ formatDate(order.created_at) }}</span>
-            <span class="order-time">约 {{ order.total_time }} 分钟</span>
+            <span v-if="order.expected_time" class="order-time">🕐 {{ formatDateTime(order.expected_time) }}</span>
+            <span class="order-duration">约 {{ order.total_time }} 分钟</span>
             <span class="order-arrow">{{ expandedOrder === order.id ? '▲' : '▼' }}</span>
           </div>
           <div class="order-dishes-summary">
@@ -70,6 +72,7 @@ import { supabase } from '../lib/supabase'
 const settings = inject('shopSettings')
 const customerName = ref('')
 const nameInput = ref('')
+const nameError = ref('')
 const orders = ref([])
 const expandedOrder = ref(null)
 
@@ -80,16 +83,35 @@ onMounted(() => {
   if (urlName) {
     customerName.value = urlName
     localStorage.setItem('cook_customer_name', urlName)
+    verifyAndLoad(urlName)
   } else if (saved) {
     customerName.value = saved
+    verifyAndLoad(saved)
   }
-  if (customerName.value) loadOrders()
 })
 
-function saveName() {
-  if (!nameInput.value.trim()) return
-  customerName.value = nameInput.value.trim()
-  localStorage.setItem('cook_customer_name', customerName.value)
+async function verifyName() {
+  const name = nameInput.value.trim()
+  if (!name) return
+  await verifyAndLoad(name)
+}
+
+async function verifyAndLoad(name) {
+  // 先验证是否在白名单
+  const { data, error } = await supabase
+    .from('customers')
+    .select('name')
+    .eq('name', name)
+    .single()
+  if (error || !data) {
+    nameError.value = '姓名不存在，请联系厨师'
+    customerName.value = ''
+    localStorage.removeItem('cook_customer_name')
+    return
+  }
+  customerName.value = name
+  localStorage.setItem('cook_customer_name', name)
+  nameError.value = ''
   loadOrders()
 }
 
@@ -108,6 +130,12 @@ function toggleOrder(id) {
 
 function formatDate(dateStr) {
   const d = new Date(dateStr)
+  return `${d.getMonth()+1}月${d.getDate()}日 ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`
+}
+
+function formatDateTime(dt) {
+  if (!dt) return ''
+  const d = new Date(dt)
   return `${d.getMonth()+1}月${d.getDate()}日 ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`
 }
 
@@ -155,8 +183,9 @@ function getOrderSeasonings(order) {
 }
 .name-section input {
   width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
+.name-error { color: #e55a2b; font-size: 12px; margin-bottom: 8px; }
 .name-section button {
   width: 100%; padding: 10px; background: var(--primary); color: #fff;
   border-radius: 8px;
@@ -184,10 +213,11 @@ function getOrderSeasonings(order) {
 }
 .order-header {
   display: flex; gap: 12px; align-items: center; font-size: 13px;
-  margin-bottom: 6px;
+  margin-bottom: 6px; flex-wrap: wrap;
 }
 .order-date { font-weight: 500; }
 .order-time { color: var(--text-secondary); }
+.order-duration { color: var(--primary); font-weight: 500; }
 .order-arrow { margin-left: auto; color: #ccc; font-size: 10px; }
 .order-dishes-summary {
   font-size: 13px; color: var(--text-secondary);
