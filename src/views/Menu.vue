@@ -17,50 +17,115 @@
       </div>
     </div>
 
-    <!-- 分类导航 -->
-    <nav class="category-nav" v-if="customerName">
-      <button
-        v-for="cat in categories"
-        :key="cat"
-        :class="['cat-btn', { active: activeCategory === cat }]"
-        @click="activeCategory = cat"
-      >{{ cat }}</button>
+    <!-- 登录后的页签导航 + 退出登录 -->
+    <nav v-if="customerName && !showSuccess" class="tab-nav">
+      <div class="tab-group">
+        <button
+          :class="['tab-btn', { active: currentTab === 'menu' }]"
+          @click="currentTab = 'menu'"
+        >🍽️ 点菜</button>
+        <button
+          :class="['tab-btn', { active: currentTab === 'history' }]"
+          @click="currentTab = 'history'"
+        >📋 历史订单</button>
+      </div>
+      <button class="logout-btn" @click="doLogout">退出登录</button>
     </nav>
 
-    <!-- 菜品列表 -->
-    <div class="dish-list" v-if="customerName">
-      <div v-for="dish in filteredDishes" :key="dish.id" class="dish-card">
-        <div class="dish-img" @click="showDishDetail(dish)">
-          <img v-if="dish.image_url" :src="dish.image_url" />
-          <div v-else class="img-placeholder">暂无图片</div>
-          <span class="temp-tag">{{ dish.temperature }}</span>
-        </div>
-        <div class="dish-info">
-          <h3>{{ dish.name }}</h3>
-          <div class="flavor-tags">
-            <span v-for="f in dish.flavor" :key="f" class="flavor-tag">{{ f }}</span>
-          </div>
-          <p class="cook-time">⏱ {{ dish.cook_time }}分钟</p>
-          <p v-if="dish.notes" class="dish-notes">📝 {{ dish.notes }}</p>
-        </div>
+    <!-- ========== 点菜页签 ========== -->
+    <div v-if="customerName && currentTab === 'menu'">
+      <!-- 分类导航 -->
+      <nav class="category-nav">
         <button
-          :class="['add-btn', { added: isInCart(dish.id) }]"
-          @click="addToCart(dish)"
-        >{{ isInCart(dish.id) ? '已添加' : '+' }}</button>
+          v-for="cat in categories"
+          :key="cat"
+          :class="['cat-btn', { active: activeCategory === cat }]"
+          @click="activeCategory = cat"
+        >{{ cat }}</button>
+      </nav>
+
+      <!-- 菜品列表 -->
+      <div class="dish-list">
+        <div v-for="dish in filteredDishes" :key="dish.id" class="dish-card">
+          <div class="dish-img" @click="showDishDetail(dish)">
+            <img v-if="dish.image_url" :src="dish.image_url" />
+            <div v-else class="img-placeholder">暂无图片</div>
+            <span class="temp-tag">{{ dish.temperature }}</span>
+          </div>
+          <div class="dish-info">
+            <h3>{{ dish.name }}</h3>
+            <div class="flavor-tags">
+              <span v-for="f in dish.flavor" :key="f" class="flavor-tag">{{ f }}</span>
+            </div>
+            <p class="cook-time">⏱ {{ dish.cook_time }}分钟</p>
+            <p v-if="dish.notes" class="dish-notes">📝 {{ dish.notes }}</p>
+          </div>
+          <!-- 已添加：绿色对勾（点击移除）；未添加：橙色+号（点击添加） -->
+          <button
+            v-if="isInCart(dish.id)"
+            class="add-btn checked-btn"
+            @click="removeFromCart(dish.id)"
+            title="点击从购物车移除"
+          >✓</button>
+          <button
+            v-else
+            class="add-btn"
+            @click="addToCart(dish)"
+          >+</button>
+        </div>
+      </div>
+
+      <!-- 底部购物车栏 -->
+      <div v-if="cartItems.length > 0" class="cart-bar" @click="showCart = true">
+        <div class="cart-icon">
+          🛒
+          <span class="cart-count">{{ cartItems.length }}</span>
+        </div>
+        <div class="cart-info">
+          <span>已选 {{ cartItems.length }} 道菜</span>
+          <span>约 {{ getTotalTime() }} 分钟</span>
+        </div>
+        <button class="cart-submit" @click.stop="openCart">查看购物车</button>
       </div>
     </div>
 
-    <!-- 底部购物车栏 -->
-    <div v-if="cartItems.length > 0 && !showSuccess" class="cart-bar" @click="showCart = true">
-      <div class="cart-icon">
-        🛒
-        <span class="cart-count">{{ cartItems.length }}</span>
+    <!-- ========== 历史订单页签 ========== -->
+    <div v-if="customerName && currentTab === 'history'" class="history-tab">
+      <div class="history-header">
+        <h2>我的历史订单</h2>
+        <span class="history-name">{{ customerName }}</span>
       </div>
-      <div class="cart-info">
-        <span>已选 {{ cartItems.length }} 道菜</span>
-        <span>约 {{ getTotalTime() }} 分钟</span>
+      <div v-if="orders.length === 0" class="empty-tip">
+        还没有订单，去点餐吧 🍴
       </div>
-      <button class="cart-submit" @click.stop="openCart">查看购物车</button>
+      <div v-for="order in orders" :key="order.id" class="order-card" @click="toggleOrder(order.id)">
+        <div class="order-header">
+          <span class="order-date">{{ formatDate(order.created_at) }}</span>
+          <span v-if="order.expected_time" class="order-time">🕐 {{ formatDateTime(order.expected_time) }}</span>
+          <span class="order-arrow">{{ expandedOrderId === order.id ? '▲' : '▼' }}</span>
+        </div>
+        <div class="order-summary">
+          {{ order.dishes.map(d => d.name).join('、') }}
+        </div>
+        <!-- 展开详情 -->
+        <div v-if="expandedOrderId === order.id" class="order-detail">
+          <p><strong>菜品：</strong></p>
+          <div v-for="item in order.dishes" :key="item.id" class="detail-dish-item">
+            <strong>{{ item.name }}</strong> · {{ item.cook_time }}分钟
+            <span v-if="item.customer_note" class="detail-note">（备注：{{ item.customer_note }}）</span>
+          </div>
+          <p class="detail-total">共 {{ order.dishes.length }} 道菜，约 {{ order.total_time }} 分钟</p>
+          <p v-if="order.note" class="detail-note-full">订单备注：{{ order.note }}</p>
+          <h4>食材汇总</h4>
+          <div v-for="(ing, idx) in getIngredients(order)" :key="'i'+idx" class="summary-row">
+            <span>{{ ing.name }}</span><span>{{ ing.amount }}</span>
+          </div>
+          <h4>调料汇总</h4>
+          <div v-for="(s, idx) in getSeasonings(order)" :key="'s'+idx" class="summary-row">
+            <span>{{ s.name }}</span><span>{{ s.amount }}</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 购物车弹窗 -->
@@ -179,7 +244,6 @@
       </div>
 
       <div class="success-actions">
-        <button class="btn-history" @click="goHistory">查看历史订单</button>
         <button class="btn-order-again" @click="orderAgain">再来一单</button>
       </div>
     </div>
@@ -209,11 +273,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, inject } from 'vue'
+import { ref, computed, onMounted, inject, watch } from 'vue'
 import { supabase } from '../lib/supabase'
 import { useCart } from '../lib/cart'
 
 const settings = inject('shopSettings')
+
+// 页签状态
+const currentTab = ref('menu')
 
 const categories = ['全部', '荤菜', '素菜', '汤类', '粉面类', '主食']
 const activeCategory = ref('全部')
@@ -233,6 +300,10 @@ const successOrder = ref({ dishes: [], total_time: 0 })
 const successIngredients = ref([])
 const successSeasonings = ref([])
 
+// 历史订单相关
+const orders = ref([])
+const expandedOrderId = ref(null)
+
 const { cartItems, addToCart, removeFromCart, clearCart, getTotalTime } = useCart()
 
 onMounted(() => {
@@ -243,9 +314,11 @@ onMounted(() => {
     customerName.value = urlName
     localStorage.setItem('cook_customer_name', urlName)
     loadDishes()
+    loadHistory()
   } else if (saved) {
     customerName.value = saved
     loadDishes()
+    loadHistory()
   }
   // 默认期望时间为今天 18:00
   const d = new Date()
@@ -256,7 +329,6 @@ onMounted(() => {
 async function verifyName() {
   const name = nameInput.value.trim()
   if (!name) return
-  // 查 customers 表验证姓名是否存在
   const { data, error } = await supabase
     .from('customers')
     .select('name')
@@ -270,6 +342,7 @@ async function verifyName() {
   localStorage.setItem('cook_customer_name', name)
   nameError.value = ''
   loadDishes()
+  loadHistory()
 }
 
 async function loadDishes() {
@@ -279,6 +352,16 @@ async function loadDishes() {
     .eq('is_active', true)
     .order('created_at', { ascending: false })
   if (!error) dishes.value = data || []
+}
+
+async function loadHistory() {
+  if (!customerName.value) return
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('customer_name', customerName.value)
+    .order('created_at', { ascending: false })
+  if (!error) orders.value = data || []
 }
 
 function isInCart(dishId) {
@@ -292,6 +375,17 @@ function showDishDetail(dish) {
 
 function openCart() {
   showCart.value = true
+}
+
+function toggleOrder(id) {
+  expandedOrderId.value = expandedOrderId.value === id ? null : id
+}
+
+function doLogout() {
+  localStorage.removeItem('cook_customer_name')
+  customerName.value = ''
+  currentTab.value = 'menu'
+  orders.value = []
 }
 
 const filteredDishes = computed(() => {
@@ -327,6 +421,26 @@ const allSeasonings = computed(() => {
   return Object.values(map)
 })
 
+function getIngredients(order) {
+  const map = {}
+  ;(order.dishes || []).forEach(item => {
+    ;(item.ingredients || []).forEach(ing => {
+      map[ing.name] = { name: ing.name, amount: ing.amount }
+    })
+  })
+  return Object.values(map)
+}
+
+function getSeasonings(order) {
+  const map = {}
+  ;(order.dishes || []).forEach(item => {
+    ;(item.seasonings || []).forEach(s => {
+      map[s.name] = { name: s.name, amount: s.amount }
+    })
+  })
+  return Object.values(map)
+}
+
 async function submitOrder() {
   if (cartItems.value.length === 0) return
   if (!expectedTime.value) {
@@ -360,7 +474,6 @@ async function submitOrder() {
     note: orderNote.value.trim() || '',
     expected_time: expectedTime.value
   }
-  // 汇总食材
   const ingMap = {}
   orderDishes.forEach(item => {
     ;(item.ingredients || []).forEach(ing => {
@@ -373,7 +486,6 @@ async function submitOrder() {
   })
   successIngredients.value = Object.values(ingMap)
 
-  // 汇总调料
   const seaMap = {}
   orderDishes.forEach(item => {
     ;(item.seasonings || []).forEach(s => {
@@ -391,7 +503,10 @@ async function submitOrder() {
   expectedTime.value = ''
   showCart.value = false
   showSuccess.value = true
+  currentTab.value = 'menu'
   window.scrollTo({ top: 0, behavior: 'smooth' })
+  // 刷新历史记录
+  loadHistory()
 }
 
 function formatDateTime(dt) {
@@ -399,8 +514,9 @@ function formatDateTime(dt) {
   return `${d.getMonth()+1}月${d.getDate()}日 ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`
 }
 
-function goHistory() {
-  window.location.href = '/history?customer=' + encodeURIComponent(customerName.value)
+function formatDate(dateStr) {
+  const d = new Date(dateStr)
+  return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
 }
 
 function orderAgain() {
@@ -418,6 +534,26 @@ function orderAgain() {
 .top-bar .logo { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
 .top-bar h1 { font-size: 18px; font-weight: 600; }
 
+/* 页签导航 */
+.tab-nav {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 16px; background: #fff;
+  border-bottom: 1px solid var(--border);
+}
+.tab-group { display: flex; gap: 4px; background: var(--bg); border-radius: 8px; padding: 2px; }
+.tab-btn {
+  padding: 6px 18px; border-radius: 6px; font-size: 13px;
+  background: transparent; color: var(--text-secondary); border: none; cursor: pointer;
+}
+.tab-btn.active {
+  background: var(--primary); color: #fff; font-weight: 500;
+}
+.logout-btn {
+  padding: 5px 12px; border-radius: 6px; font-size: 12px;
+  background: #fff0f0; color: #e55a2b; border: 1px solid #ffcccc; cursor: pointer;
+}
+
+/* 登录框 */
 .name-modal {
   position: fixed; inset: 0; background: rgba(0,0,0,0.5);
   display: flex; align-items: center; justify-content: center; z-index: 100;
@@ -437,9 +573,10 @@ function orderAgain() {
   border-radius: 8px; font-weight: 500; margin-top: 4px;
 }
 
+/* 分类导航 */
 .category-nav {
   display: flex; gap: 8px; padding: 10px 16px; overflow-x: auto;
-  background: #fff; border-bottom: 1px solid var(--border);
+  background: #fff;
 }
 .cat-btn {
   white-space: nowrap; padding: 6px 14px; border-radius: 20px;
@@ -447,6 +584,7 @@ function orderAgain() {
 }
 .cat-btn.active { background: var(--primary); color: #fff; }
 
+/* 菜品卡片 */
 .dish-list { padding: 12px; display: grid; gap: 12px; }
 .dish-card {
   display: flex; gap: 12px; background: #fff; border-radius: 12px;
@@ -476,12 +614,21 @@ function orderAgain() {
 }
 .cook-time { font-size: 12px; color: var(--text-secondary); }
 .dish-notes { font-size: 11px; color: #e55a2b; margin-top: 2px; }
+
+/* 添加/已添加按钮 */
 .add-btn {
   width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
   background: var(--primary); color: #fff; font-size: 18px; font-weight: bold;
+  border: none; cursor: pointer; transition: all 0.15s;
 }
-.add-btn.added { background: #ccc; }
+.checked-btn {
+  background: #27ae60 !important;
+  box-shadow: 0 2px 6px rgba(39,174,96,0.35);
+}
+.add-btn:active { transform: scale(0.9); }
+.checked-btn:active { transform: scale(0.9); }
 
+/* 底部购物车 */
 .cart-bar {
   position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
   width: 100%; max-width: 480px; background: #fff;
@@ -500,6 +647,7 @@ function orderAgain() {
   border-radius: 8px; font-weight: 500;
 }
 
+/* 弹窗通用 */
 .modal-mask {
   position: fixed; inset: 0; background: rgba(0,0,0,0.5);
   display: flex; align-items: flex-end; justify-content: center; z-index: 200;
@@ -508,6 +656,8 @@ function orderAgain() {
   background: #fff; border-radius: 16px 16px 0 0; width: 100%;
   max-width: 480px; max-height: 85vh; overflow-y: auto; padding: 20px;
 }
+
+/* 购物车弹窗 */
 .cart-modal h2 { font-size: 16px; margin-bottom: 12px; }
 .cart-item {
   display: flex; align-items: center; gap: 8px; padding: 10px 0;
@@ -522,7 +672,7 @@ function orderAgain() {
 }
 .remove-btn {
   width: 24px; height: 24px; border-radius: 50%; background: #f0f0f0;
-  color: #999; font-size: 12px; flex-shrink: 0;
+  color: #999; font-size: 12px; flex-shrink: 0; cursor: pointer;
 }
 .expected-time-section { margin-top: 12px; }
 .expected-time-section label { font-size: 13px; font-weight: 500; display: block; margin-bottom: 4px; }
@@ -591,16 +741,43 @@ function orderAgain() {
 .success-actions {
   display: flex; gap: 12px; padding: 16px 12px;
 }
-.btn-history {
-  flex: 1; padding: 10px; border: 1px solid var(--primary);
-  color: var(--primary); border-radius: 8px; font-weight: 500;
-  background: #fff;
-}
 .btn-order-again {
   flex: 1; padding: 10px; background: var(--primary);
   color: #fff; border-radius: 8px; font-weight: 500;
 }
 .empty-tip { font-size: 12px; color: var(--text-secondary); }
+
+/* 历史订单页签 */
+.history-tab { padding: 12px; }
+.history-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 12px;
+}
+.history-header h2 { font-size: 16px; color: var(--text); }
+.history-name { font-size: 12px; color: var(--text-secondary); }
+.order-card {
+  background: #fff; border-radius: 12px; padding: 12px; margin-bottom: 10px;
+  cursor: pointer;
+}
+.order-header {
+  display: flex; gap: 10px; align-items: center; font-size: 13px;
+  margin-bottom: 6px;
+}
+.order-date { color: var(--text-secondary); }
+.order-time { color: var(--primary); font-size: 12px; }
+.order-arrow { margin-left: auto; color: #ccc; font-size: 10px; }
+.order-summary {
+  font-size: 13px; color: var(--text-secondary); line-height: 1.4;
+}
+.order-detail {
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+.order-detail h4 { font-size: 13px; margin: 8px 0 4px; color: var(--primary); }
+.detail-dish-item { padding: 4px 0; font-size: 13px; }
+.detail-note { font-size: 11px; color: #e55a2b; }
+.detail-total { font-weight: 500; margin-top: 6px; }
+.detail-note-full { font-size: 12px; color: var(--text-secondary); margin-top: 6px; background: #f9f9f9; padding: 6px; border-radius: 6px; }
 
 /* 菜品详情弹窗 */
 .detail-modal { border-radius: 16px; max-height: 85vh; overflow-y: auto; margin: 20px auto; width: 90%; max-width: 420px; }
