@@ -9,9 +9,10 @@
       </div>
     </header>
 
-    <!-- 新增菜品按钮 -->
+    <!-- 新增菜品按钮 + 搜索 -->
     <div class="toolbar">
       <button class="btn-add" @click="openAddModal">+ 新增菜品</button>
+      <input v-model="searchKey" placeholder="🔍 搜索菜名..." class="search-input" />
       <select v-model="filterCategory" class="filter-select">
         <option value="">全部分类</option>
         <option v-for="c in categoryOptions" :key="c" :value="c">{{ c }}</option>
@@ -125,6 +126,7 @@ const isEdit = ref(false)
 const editingId = ref(null)
 const filterCategory = ref('')
 const filterActive = ref('all')
+const searchKey = ref('')
 const tagInput = ref('')
 const uploading = ref(false)
 
@@ -145,6 +147,10 @@ const form = ref({
 
 const filteredList = computed(() => {
   let list = dishes.value
+  if (searchKey.value) {
+    const key = searchKey.value.toLowerCase()
+    list = list.filter(d => d.name.toLowerCase().includes(key))
+  }
   if (filterCategory.value) list = list.filter(d => d.category === filterCategory.value)
   if (filterActive.value === 'active') list = list.filter(d => d.is_active)
   if (filterActive.value === 'inactive') list = list.filter(d => !d.is_active)
@@ -289,6 +295,10 @@ async function logout() {
 }
 .filter-select {
   padding: 6px 8px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px;
+}
+.search-input {
+  flex: 1; min-width: 100px; padding: 6px 10px;
+  border: 1px solid #ddd; border-radius: 8px; font-size: 13px;
 }
 
 .dish-admin-list { padding: 12px; }

@@ -20,6 +20,7 @@
       </div>
 
       <p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
+      <p class="version-text">v2.0.0</p>
     </div>
   </div>
 </template>
@@ -105,4 +106,5 @@ async function signup() {
 .form-group button:disabled { opacity: 0.6; }
 .switch-link { font-size: 12px; color: var(--primary); cursor: pointer; margin-top: 4px; }
 .error-msg { color: var(--danger); font-size: 12px; margin-top: 8px; }
+.version-text { text-align: center; font-size: 11px; color: #bbb; margin-top: 16px; }
 </style>

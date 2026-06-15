@@ -207,7 +207,7 @@ async function logout() {
 .order-name { font-weight: 500; }
 .order-phone { font-size: 12px; color: var(--text-secondary); }
 .order-date { color: var(--text-secondary); font-size: 12px; }
-.order-time { font-size: 12px; color: var(--primary); }
+.order-time { font-size: 14px; font-weight: 600; color: #ff6b35; background: #fff0e8; padding: 4px 10px; border-radius: 6px; border: 1px solid #ffd8c2; margin-left: 4px; }
 .order-arrow { margin-left: auto; color: #ccc; font-size: 10px; }
 .order-summary { font-size: 12px; color: var(--text-secondary); }
 

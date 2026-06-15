@@ -19,11 +19,14 @@
       <p v-if="addError" class="error-msg">{{ addError }}</p>
     </div>
 
-    <!-- 客户列表 -->
+    <!-- 客户列表 + 搜索 -->
     <div class="list-section">
-      <h3>客户列表（共 {{ customers.length }} 人）</h3>
-      <div v-if="customers.length === 0" class="empty-tip">暂无客户，请先添加</div>
-      <div v-for="c in customers" :key="c.id" class="customer-card">
+      <div class="list-header">
+        <h3>客户列表（共 {{ filteredCustomers.length }} 人）</h3>
+        <input v-model="searchKey" placeholder="🔍 搜索姓名/手机号..." class="search-input" />
+      </div>
+      <div v-if="filteredCustomers.length === 0" class="empty-tip">未找到匹配客户</div>
+      <div v-for="c in filteredCustomers" :key="c.id" class="customer-card">
         <div class="customer-info">
           <h4>{{ c.name }}</h4>
           <p v-if="c.phone">📱 {{ c.phone }}</p>
@@ -37,15 +40,25 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { supabase } from '../lib/supabase'
 
 const customers = ref([])
+const searchKey = ref('')
 const newName = ref('')
 const newPhone = ref('')
 const newAddress = ref('')
 const newNote = ref('')
 const addError = ref('')
+
+const filteredCustomers = computed(() => {
+  if (!searchKey.value) return customers.value
+  const key = searchKey.value.toLowerCase()
+  return customers.value.filter(c =>
+    c.name.toLowerCase().includes(key) ||
+    (c.phone && c.phone.includes(key))
+  )
+})
 
 onMounted(() => {
   loadCustomers()
@@ -127,6 +140,12 @@ async function deleteCustomer(c) {
   background: #fff; margin: 12px; border-radius: 12px; padding: 16px;
 }
 .list-section h3 { font-size: 15px; margin-bottom: 12px; color: var(--text-secondary); }
+.list-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.list-header h3 { margin-bottom: 0; }
+.search-input {
+  flex: 1; min-width: 100px; padding: 6px 10px;
+  border: 1px solid #ddd; border-radius: 8px; font-size: 13px;
+}
 .empty-tip { text-align: center; color: #aaa; padding: 20px 0; font-size: 13px; }
 
 .customer-card {

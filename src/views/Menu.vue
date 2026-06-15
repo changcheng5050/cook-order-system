@@ -6,16 +6,16 @@
       <h1>{{ settings.shop_name }}</h1>
     </header>
 
-    <!-- 客户姓名输入（白名单验证） -->
-    <div v-if="!customerName" class="name-modal">
-      <div class="name-box">
-        <h2>欢迎光临</h2>
-        <p>请输入您的姓名，开始点餐</p>
-        <input v-model="nameInput" placeholder="请输入姓名" @keyup.enter="verifyName" />
-        <p v-if="nameError" class="name-error">{{ nameError }}</p>
-        <button @click="verifyName">进入菜单</button>
-      </div>
-    </div>
+        <div v-if="!customerName || showSuccess" class="name-modal">
+          <div class="name-box">
+            <h2>🍳 {{ settings.shop_name }}</h2>
+            <p class="welcome-text">欢迎光临，请输入您的姓名</p>
+            <input v-model="nameInput" placeholder="请输入姓名" @keyup.enter="verifyName" />
+            <div v-if="nameError" class="name-error">{{ nameError }}</div>
+            <button @click="verifyName">进入菜单</button>
+            <p class="version-text">v{{ version }}</p>
+          </div>
+        </div>
 
     <!-- 登录后的页签导航 + 退出登录 -->
     <nav v-if="customerName && !showSuccess" class="tab-nav">
@@ -278,6 +278,7 @@ import { supabase } from '../lib/supabase'
 import { useCart } from '../lib/cart'
 
 const settings = inject('shopSettings')
+const version = ref('v2.0.0')
 
 // 页签状态
 const currentTab = ref('menu')
@@ -567,7 +568,17 @@ function orderAgain() {
   width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;
   margin-bottom: 8px;
 }
-.name-error { color: #e55a2b; font-size: 12px; margin-bottom: 8px; }
+.name-error {
+  background: #fff2f0;
+  color: #ff4d4f;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #ffccc7;
+  margin-bottom: 12px;
+  text-align: center;
+}
 .name-box button {
   width: 100%; padding: 10px; background: var(--primary); color: #fff;
   border-radius: 8px; font-weight: 500; margin-top: 4px;

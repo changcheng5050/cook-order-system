@@ -9,13 +9,21 @@
   --primary: #ff6b35;
   --primary-light: #fff0e8;
   --primary-dark: #e55a2b;
-  --bg: #f5f5f5;
+  --primary-gradient: linear-gradient(135deg, #ff6b35, #f7931e);
+  --primary-gradient-reverse: linear-gradient(135deg, #f7931e, #ff6b35);
+  --bg: #faf8f6;
   --card-bg: #ffffff;
-  --text: #333333;
+  --text: #2d2d2d;
   --text-secondary: #888888;
-  --border: #eeeeee;
+  --border: #f0ebe6;
   --danger: #ff4d4f;
   --success: #52c41a;
+  --shadow-sm: 0 1px 4px rgba(255, 107, 53, 0.08);
+  --shadow-md: 0 4px 16px rgba(255, 107, 53, 0.12);
+  --shadow-lg: 0 8px 32px rgba(255, 107, 53, 0.16);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
 }
 
 body {
