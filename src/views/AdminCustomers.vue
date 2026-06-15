@@ -78,21 +78,25 @@ async function addCustomer() {
     addError.value = '客户姓名不能为空'
     return
   }
-  const { error } = await supabase.from('customers').insert({
+  addError.value = ''
+  const { data, error } = await supabase.from('customers').insert({
     name,
     phone: newPhone.value.trim() || null,
     address: newAddress.value.trim() || null,
     note: newNote.value.trim() || null
-  })
+  }).select('id')
   if (error) {
-    if (error.message.includes('unique')) {
+    console.error('添加客户失败:', error)
+    if (error.message.includes('unique') || error.code === '23505') {
       addError.value = '该客户姓名已存在，不能重复'
+    } else if (error.message.includes('row-level') || error.code === '42501') {
+      addError.value = '权限不足，请在 Supabase 执行 upgrade-v2.sql'
     } else {
       addError.value = '添加失败：' + error.message
     }
     return
   }
-  addError.value = ''
+  // 清空表单
   newName.value = ''
   newPhone.value = ''
   newAddress.value = ''

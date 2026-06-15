@@ -50,7 +50,7 @@
           <div class="dish-img" @click="showDishDetail(dish)">
             <img v-if="dish.image_url" :src="dish.image_url" />
             <div v-else class="img-placeholder">暂无图片</div>
-            <span class="temp-tag">{{ dish.temperature }}</span>
+            <span :class="['temp-tag', 'temp-' + (dish.temperature || 'other')]">{{ dish.temperature }}</span>
           </div>
           <div class="dish-info">
             <h3>{{ dish.name }}</h3>
@@ -101,7 +101,7 @@
       <div v-for="order in orders" :key="order.id" class="order-card" @click="toggleOrder(order.id)">
         <div class="order-header">
           <span class="order-date">{{ formatDate(order.created_at) }}</span>
-          <span v-if="order.expected_time" class="order-time">🕐 {{ formatDateTime(order.expected_time) }}</span>
+          <span v-if="order.expected_time" class="expected-badge">⏰ 期望时间：{{ formatDateTime(order.expected_time) }}</span>
           <span class="order-arrow">{{ expandedOrderId === order.id ? '▲' : '▼' }}</span>
         </div>
         <div class="order-summary">
@@ -278,7 +278,7 @@ import { supabase } from '../lib/supabase'
 import { useCart } from '../lib/cart'
 
 const settings = inject('shopSettings')
-const version = ref('v2.0.0')
+const version = ref('v2.0.1')
 
 // 页签状态
 const currentTab = ref('menu')
@@ -336,7 +336,7 @@ async function verifyName() {
     .eq('name', name)
     .single()
   if (error || !data) {
-    nameError.value = '姓名不存在，请联系厨师添加'
+    nameError.value = '姓名不存在，请联系管理员添加'
     return
   }
   customerName.value = name
@@ -613,9 +613,16 @@ function orderAgain() {
 }
 .temp-tag {
   position: absolute; top: 4px; left: 4px;
-  background: rgba(0,0,0,0.5); color: #fff;
   font-size: 10px; padding: 2px 6px; border-radius: 4px;
+  color: #fff; font-weight: 500;
 }
+.temp-tag.temp-热菜 { background: #e53935; }
+.temp-tag.temp-凉菜 { background: #43a047; }
+.temp-tag.temp-汤类 { background: #1e88e5; }
+.temp-tag.temp-甜品 { background: #8e24aa; }
+.temp-tag.temp-主食 { background: #f57c00; }
+.temp-tag.temp-粉面类 { background: #f57c00; }
+.temp-tag.temp-other { background: rgba(0,0,0,0.55); }
 .dish-info { flex: 1; min-width: 0; }
 .dish-info h3 { font-size: 15px; margin-bottom: 4px; }
 .flavor-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 4px; }
@@ -775,7 +782,17 @@ function orderAgain() {
   margin-bottom: 6px;
 }
 .order-date { color: var(--text-secondary); }
-.order-time { color: var(--primary); font-size: 12px; }
+.expected-badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #d32f2f;
+  background: linear-gradient(135deg, #ffebee, #fce4ec);
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1.5px solid #ef9a9a;
+  margin-left: 4px;
+}
 .order-arrow { margin-left: auto; color: #ccc; font-size: 10px; }
 .order-summary {
   font-size: 13px; color: var(--text-secondary); line-height: 1.4;

@@ -24,7 +24,7 @@
           <span class="order-name">👤 {{ order.customer_name }}</span>
           <span v-if="order.customer_phone" class="order-phone">📱 {{ order.customer_phone }}</span>
           <span class="order-date">{{ formatDate(order.created_at) }}</span>
-          <span v-if="order.expected_time" class="order-time">🕐 {{ formatDateTime(order.expected_time) }}</span>
+          <span v-if="order.expected_time" class="expected-badge">⏰ 期望时间：{{ formatDateTime(order.expected_time) }}</span>
           <span class="order-arrow">{{ expandedOrder === order.id ? '▲' : '▼' }}</span>
         </div>
         <div class="order-summary">
@@ -207,7 +207,17 @@ async function logout() {
 .order-name { font-weight: 500; }
 .order-phone { font-size: 12px; color: var(--text-secondary); }
 .order-date { color: var(--text-secondary); font-size: 12px; }
-.order-time { font-size: 14px; font-weight: 600; color: #ff6b35; background: #fff0e8; padding: 4px 10px; border-radius: 6px; border: 1px solid #ffd8c2; margin-left: 4px; }
+.expected-badge {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #d32f2f;
+  background: linear-gradient(135deg, #ffebee, #fce4ec);
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1.5px solid #ef9a9a;
+  margin-left: 4px;
+}
 .order-arrow { margin-left: auto; color: #ccc; font-size: 10px; }
 .order-summary { font-size: 12px; color: var(--text-secondary); }
 

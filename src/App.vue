@@ -1,6 +1,9 @@
 <template>
   <div id="app-root">
-    <!-- 管理员左侧导航（仅管理员页面显示） -->
+    <!-- 版本号：页面顶部右侧 -->
+    <div class="version-badge">v{{ version }}</div>
+
+    <!-- 管理员左侧导航（仅管理员已登录且在管理页面时显示） -->
     <aside v-if="isAdminPage && isAdmin" class="admin-sidebar">
       <div class="sidebar-logo">
         <span class="logo-icon">🍳</span>
@@ -35,10 +38,6 @@
     <!-- 主内容区 -->
     <div :class="['main-content', { 'with-sidebar': isAdminPage && isAdmin }]">
       <router-view />
-      <!-- 版本号（所有页面底部显示） -->
-      <div class="version-footer">
-        v{{ version }}
-      </div>
     </div>
   </div>
 </template>
@@ -68,7 +67,7 @@ watch(() => route.path, () => {
   }
 }, { immediate: true })
 
-const version = ref('v2.0.0')
+const version = ref('v2.0.1')
 
 const shopSettings = ref({
   shop_name: '阿旺小厨房',
@@ -102,6 +101,21 @@ function logout() {
 #app-root {
   min-height: 100vh;
   display: flex;
+  position: relative;
+}
+
+/* 版本号：页面顶部右侧 */
+.version-badge {
+  position: fixed;
+  top: 6px;
+  right: 10px;
+  z-index: 999;
+  font-size: 11px;
+  color: rgba(255,255,255,0.7);
+  background: rgba(0,0,0,0.2);
+  padding: 2px 8px;
+  border-radius: 10px;
+  pointer-events: none;
 }
 
 .admin-sidebar {
@@ -109,46 +123,46 @@ function logout() {
   left: 0;
   top: 0;
   bottom: 0;
-  width: 180px;
+  width: 140px;
   background: var(--primary-gradient);
   display: flex;
   flex-direction: column;
   z-index: 100;
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-md);
 }
 
 .sidebar-logo {
-  padding: 18px 14px;
+  padding: 12px 10px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   color: #fff;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
   border-bottom: 1px solid rgba(255,255,255,0.15);
 }
 
 .logo-icon {
-  font-size: 22px;
+  font-size: 18px;
 }
 
 .sidebar-nav {
   flex: 1;
-  padding: 10px 8px;
+  padding: 8px 6px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .sidebar-nav .nav-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 8px;
+  padding: 8px 10px;
   border-radius: var(--radius-sm);
   color: rgba(255,255,255,0.85);
   text-decoration: none;
-  font-size: 13px;
+  font-size: 12px;
   transition: background 0.2s;
 }
 
@@ -164,14 +178,14 @@ function logout() {
 }
 
 .nav-icon {
-  font-size: 18px;
-  width: 24px;
+  font-size: 15px;
+  width: 20px;
   text-align: center;
   flex-shrink: 0;
 }
 
 .sidebar-footer {
-  padding: 10px 8px;
+  padding: 8px 6px;
   border-top: 1px solid rgba(255,255,255,0.15);
 }
 
@@ -179,13 +193,13 @@ function logout() {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 8px;
+  padding: 8px 10px;
   border-radius: var(--radius-sm);
   background: rgba(255,255,255,0.1);
   color: #fff;
   border: none;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   transition: background 0.2s;
 }
@@ -202,24 +216,16 @@ function logout() {
 }
 
 .main-content.with-sidebar {
-  margin-left: 180px;
-}
-
-.version-footer {
-  text-align: center;
-  font-size: 11px;
-  color: #bbb;
-  padding: 12px 0 8px;
-  margin-top: auto;
+  margin-left: 140px;
 }
 
 /* 手机端：侧边栏缩小 */
 @media (max-width: 480px) {
   .admin-sidebar {
-    width: 56px;
+    width: 48px;
   }
   .main-content.with-sidebar {
-    margin-left: 56px;
+    margin-left: 48px;
   }
   .sidebar-logo .logo-text,
   .sidebar-nav .nav-label,
@@ -228,11 +234,11 @@ function logout() {
   }
   .sidebar-nav .nav-item {
     justify-content: center;
-    padding: 10px;
+    padding: 8px;
   }
   .sidebar-footer .nav-logout {
     justify-content: center;
-    padding: 10px;
+    padding: 8px;
   }
 }
 </style>
