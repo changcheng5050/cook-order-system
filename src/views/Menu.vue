@@ -181,7 +181,7 @@
           <label>订单备注（选填）</label>
           <textarea
             v-model="orderNote"
-            placeholder="如：今天有老人，口味清淡些"
+            placeholder="如：不吃香菜"
             class="order-note-input"
           ></textarea>
         </div>
@@ -281,6 +281,7 @@
     <!-- 菜品详情弹窗 -->
     <div v-if="showDetail" class="modal-mask" @click.self="showDetail = false">
       <div class="modal-box detail-modal">
+        <button class="detail-close-x" @click="showDetail = false">✕</button>
         <img v-if="detailDish.image_url" :src="detailDish.image_url" class="detail-img" />
         <div v-else class="detail-img-ph"></div>
         <h2>{{ detailDish.name }}</h2>
@@ -322,7 +323,7 @@ import { supabase } from '../lib/supabase'
 import { useCart } from '../lib/cart'
 
 const settings = inject('shopSettings')
-const version = ref('v2.2.0')  // v2.2.0: back-to-top + 主食分类 + 底部提示
+const version = ref('v2.2.1')  // v2.2.1: 时间选择器修复 + 订单备注默认提示 + 详情页右上角关闭叉
 
 // Logo 图片加载失败时，清除 url 让默认图标显示
 function onLogoError() {
@@ -892,7 +893,7 @@ function formatDate(dateStr) {
 .required { color: #e55a2b; }
 .time-input {
   width: 100%; padding: 8px 10px; border: 1px solid #00a870; border-radius: 8px;
-  font-size: 14px;
+  font-size: 14px; box-sizing: border-box; max-width: 100%; min-width: 0;
 }
 .order-note-section { margin-top: 12px; }
 .order-note-section label { font-size: 13px; font-weight: 500; display: block; margin-bottom: 4px; }
@@ -1029,7 +1030,7 @@ function formatDate(dateStr) {
 .detail-note-full { font-size: 12px; color: var(--text-secondary); margin-top: 6px; background: #f9f9f9; padding: 6px; border-radius: 6px; }
 
 /* 菜品详情弹窗 */
-.detail-modal { border-radius: 16px; max-height: 85vh; overflow-y: auto; margin: 20px auto; width: 90%; max-width: 420px; }
+.detail-modal { border-radius: 16px; max-height: 85vh; overflow-y: auto; margin: 20px auto; width: 90%; max-width: 420px; position: relative; }
 /* 正方形 + 等比例完整显示 */
 .detail-img {
   width: 100%;
@@ -1061,6 +1062,14 @@ function formatDate(dateStr) {
 /* 详情页底部按钮区 */
 .detail-actions {
   display: flex; gap: 10px; margin-top: 16px;
+}
+.detail-close-x {
+  position: absolute; top: 10px; right: 10px;
+  width: 32px; height: 32px; border: none;
+  background: rgba(0,0,0,0.35); color: #fff;
+  font-size: 16px; border-radius: 50%; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 10;
 }
 .detail-actions button {
   flex: 1; padding: 10px; border-radius: 8px;
