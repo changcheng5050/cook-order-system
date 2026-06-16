@@ -7,7 +7,7 @@
         <button class="btn-nav" @click="$router.push('/admin/orders')">订单</button>
         <button class="btn-settings" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
-        <span class="version-badge">v2.0.14</span>
+        <span class="version-badge">v2.0.16</span>
       </div>
     </header>
 
@@ -96,7 +96,7 @@
           <input v-model="ing.amount" placeholder="用量" />
           <button @click="form.ingredients.splice(idx, 1)">✕</button>
         </div>
-        <button class="btn-add-row" @click="form.ingredients.push({name:'',amount:'适量'})">+ 添加食材</button>
+        <button class="btn-add-row" @click="form.ingredients.unshift({name:'',amount:'适量'})">+ 添加食材</button>
 
         <label>调料 *（名称和用量，可排序）</label>
         <div v-for="(s, idx) in form.seasonings" :key="'s-'+idx"
@@ -113,7 +113,7 @@
           <input v-model="s.amount" placeholder="用量" />
           <button @click="form.seasonings.splice(idx, 1)">✕</button>
         </div>
-        <button class="btn-add-row" @click="form.seasonings.push({name:'',amount:'适量'})">+ 添加调料</button>
+        <button class="btn-add-row" @click="form.seasonings.unshift({name:'',amount:'适量'})">+ 添加调料</button>
 
         <label>备注</label>
         <textarea v-model="form.notes" placeholder="如：含葱姜蒜，忌口请提前告知"></textarea>
@@ -525,13 +525,20 @@ function cancelCrop() {
 
 // ========== 跳过裁剪，直接压缩上传原图 ==========
 async function skipCrop() {
-  if (!pendingFile) return
+  if (!pendingFile) {
+    alert('未检测到待上传图片，请重新选择图片')
+    showCropper.value = false
+    return
+  }
   uploading.value = true
   try {
     const compressedBlob = await compressImage(pendingFile)
+    if (!compressedBlob) throw new Error('图片压缩失败')
+    // 转成 File 对象再上传（更稳妥）
     const ext = pendingFile.name.split('.').pop() || 'jpg'
     const fileName = `dish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
-    const { error } = await supabase.storage.from('dish-images').upload(fileName, compressedBlob)
+    const compressedFile = new File([compressedBlob], fileName, { type: compressedBlob.type || 'image/jpeg' })
+    const { error } = await supabase.storage.from('dish-images').upload(fileName, compressedFile)
     if (!error) {
       const { data: { publicUrl } } = supabase.storage.from('dish-images').getPublicUrl(fileName)
       form.value.image_url = publicUrl
@@ -539,46 +546,42 @@ async function skipCrop() {
       alert('上传失败：' + error.message)
     }
   } catch (err) {
-    console.error(err)
-    alert('上传失败')
+    console.error('skipCrop 出错：', err)
+    alert('上传失败：' + (err.message || err))
+  } finally {
+    uploading.value = false
+    showCropper.value = false
+    cropImageObj = null
+    pendingFile = null
   }
-  uploading.value = false
-  showCropper.value = false
-  cropImageObj = null
-  pendingFile = null
 }
 
 // ========== 确认裁剪 → 原图坐标裁剪 → 一次性压缩上传 ==========
 async function cropAndUpload() {
   if (!cropImageObj) return
   uploading.value = true
-
   try {
     const cb = cropBox.value
-    // 将裁剪框坐标映射回原图坐标
     const sx = (cb.x - imgOffsetX) / imgScale
     const sy = (cb.y - imgOffsetY) / imgScale
     const sw = cb.w / imgScale
     const sh = cb.h / imgScale
-
-    // 在原图分辨率上裁剪，然后直接压缩输出（只压缩一次）
     const outW = Math.max(1, Math.round(sw))
     const outH = Math.max(1, Math.round(sh))
 
-    // 第一步：在原图分辨率上裁剪
     const tmpCanvas = document.createElement('canvas')
     tmpCanvas.width = outW
     tmpCanvas.height = outH
     const tmpCtx = tmpCanvas.getContext('2d')
     tmpCtx.drawImage(cropImageObj, sx, sy, sw, sh, 0, 0, outW, outH)
 
-    // 第二步：直接压缩到目标尺寸（只执行一次，避免双重压缩）
     tmpCanvas.toBlob(async (blob) => {
       if (!blob) { alert('裁剪失败'); uploading.value = false; return }
       try {
         const ext = pendingFile ? (pendingFile.name.split('.').pop() || 'jpg') : 'jpg'
         const fileName = `dish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
-        const { error } = await supabase.storage.from('dish-images').upload(fileName, blob)
+        const croppedFile = new File([blob], fileName, { type: blob.type || 'image/jpeg' })
+        const { error } = await supabase.storage.from('dish-images').upload(fileName, croppedFile)
         if (!error) {
           const { data: { publicUrl } } = supabase.storage.from('dish-images').getPublicUrl(fileName)
           form.value.image_url = publicUrl
@@ -586,8 +589,8 @@ async function cropAndUpload() {
           alert('上传失败：' + error.message)
         }
       } catch (err) {
-        console.error(err)
-        alert('上传失败')
+        console.error('cropAndUpload 上传出错：', err)
+        alert('上传失败：' + (err.message || err))
       }
       uploading.value = false
       showCropper.value = false
@@ -595,8 +598,8 @@ async function cropAndUpload() {
       pendingFile = null
     }, 'image/jpeg', 0.85)
   } catch (err) {
-    console.error(err)
-    alert('裁剪出错')
+    console.error('cropAndUpload 出错：', err)
+    alert('裁剪出错：' + (err.message || err))
     uploading.value = false
   }
 }
