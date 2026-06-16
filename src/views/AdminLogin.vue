@@ -1,30 +1,30 @@
-<template>
+﻿<template>
   <div class="login-page">
     <div class="login-box">
       <img v-if="settings.logo_url" :src="settings.logo_url" class="login-logo" />
       <h1>{{ settings.shop_name }}</h1>
-      <p class="login-subtitle">管理员登录</p>
+      <p class="login-subtitle">绠＄悊鍛樼櫥褰?/p>
 
       <div v-if="!isSignup" class="form-group">
-        <input v-model="email" type="email" placeholder="邮箱" />
-        <input v-model="password" type="password" placeholder="密码" @keyup.enter="login" />
+        <input v-model="email" type="email" placeholder="閭" />
+        <input v-model="password" type="password" placeholder="瀵嗙爜" @keyup.enter="login" />
         <label class="remember-row">
           <input type="checkbox" v-model="rememberMe" />
-          <span>记住登录信息（下次自动填充）</span>
+          <span>璁颁綇鐧诲綍淇℃伅锛堜笅娆¤嚜鍔ㄥ～鍏咃級</span>
         </label>
-        <button @click="login" :disabled="loading">{{ loading ? '登录中...' : '登录' }}</button>
-        <p class="switch-link" @click="isSignup = true">还没有账号？点击注册</p>
+        <button @click="login" :disabled="loading">{{ loading ? '鐧诲綍涓?..' : '鐧诲綍' }}</button>
+        <p class="switch-link" @click="isSignup = true">杩樻病鏈夎处鍙凤紵鐐瑰嚮娉ㄥ唽</p>
       </div>
 
       <div v-else class="form-group">
-        <input v-model="email" type="email" placeholder="邮箱" />
-        <input v-model="password" type="password" placeholder="密码（至少6位）" @keyup.enter="signup" />
-        <button @click="signup" :disabled="loading">{{ loading ? '注册中...' : '注册' }}</button>
-        <p class="switch-link" @click="isSignup = false">已有账号？返回登录</p>
+        <input v-model="email" type="email" placeholder="閭" />
+        <input v-model="password" type="password" placeholder="瀵嗙爜锛堣嚦灏?浣嶏級" @keyup.enter="signup" />
+        <button @click="signup" :disabled="loading">{{ loading ? '娉ㄥ唽涓?..' : '娉ㄥ唽' }}</button>
+        <p class="switch-link" @click="isSignup = false">宸叉湁璐﹀彿锛熻繑鍥炵櫥褰?/p>
       </div>
 
       <p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
-      <p class="version-text">v2.0.23</p>
+      <p class="version-text">v2.0.25</p>
     </div>
   </div>
 </template>
@@ -45,8 +45,7 @@ const isSignup = ref(false)
 const rememberMe = ref(false)
 
 onMounted(() => {
-  // 尝试读取保存的登录信息
-  const savedEmail = localStorage.getItem('admin_remember_email')
+  // 灏濊瘯璇诲彇淇濆瓨鐨勭櫥褰曚俊鎭?  const savedEmail = localStorage.getItem('admin_remember_email')
   const savedPwd = localStorage.getItem('admin_remember_password')
   if (savedEmail) {
     email.value = savedEmail
@@ -57,7 +56,7 @@ onMounted(() => {
 
 async function login() {
   if (!email.value || !password.value) {
-    errorMsg.value = '请输入邮箱和密码'
+    errorMsg.value = '璇疯緭鍏ラ偖绠卞拰瀵嗙爜'
     return
   }
   loading.value = true
@@ -70,7 +69,7 @@ async function login() {
   if (error) {
     errorMsg.value = error.message
   } else {
-    // 根据选择是否记住密码
+    // 鏍规嵁閫夋嫨鏄惁璁颁綇瀵嗙爜
     if (rememberMe.value) {
       localStorage.setItem('admin_remember_email', email.value)
       localStorage.setItem('admin_remember_password', password.value)
@@ -84,11 +83,11 @@ async function login() {
 
 async function signup() {
   if (!email.value || !password.value) {
-    errorMsg.value = '请输入邮箱和密码'
+    errorMsg.value = '璇疯緭鍏ラ偖绠卞拰瀵嗙爜'
     return
   }
   if (password.value.length < 6) {
-    errorMsg.value = '密码至少6位'
+    errorMsg.value = '瀵嗙爜鑷冲皯6浣?
     return
   }
   loading.value = true
@@ -101,7 +100,7 @@ async function signup() {
   if (error) {
     errorMsg.value = error.message
   } else {
-    errorMsg.value = '注册成功！请查收邮箱验证邮件后登录。'
+    errorMsg.value = '娉ㄥ唽鎴愬姛锛佽鏌ユ敹閭楠岃瘉閭欢鍚庣櫥褰曘€?
     isSignup.value = false
   }
 }

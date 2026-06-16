@@ -1,33 +1,33 @@
-<template>
+﻿<template>
   <div class="admin-page">
     <header class="admin-header">
-      <h1>系统设置</h1>
+      <h1>绯荤粺璁剧疆</h1>
       <div class="header-actions">
-        <button class="btn-nav" @click="$router.push('/admin/dishes')">菜品</button>
-        <button class="btn-nav" @click="$router.push('/admin/customers')">客户</button>
-        <button class="btn-nav" @click="$router.push('/admin/orders')">订单</button>
-        <button class="btn-settings active-nav" @click="$router.push('/admin/settings')">设置</button>
-        <button class="btn-logout" @click="logout">退出</button>
-        <span class="version-badge">v2.0.23</span>
+        <button class="btn-nav" @click="$router.push('/admin/dishes')">鑿滃搧</button>
+        <button class="btn-nav" @click="$router.push('/admin/customers')">瀹㈡埛</button>
+        <button class="btn-nav" @click="$router.push('/admin/orders')">璁㈠崟</button>
+        <button class="btn-settings active-nav" @click="$router.push('/admin/settings')">璁剧疆</button>
+        <button class="btn-logout" @click="logout">閫€鍑?/button>
+        <span class="version-badge">v2.0.25</span>
       </div>
     </header>
 
     <div class="settings-form">
-      <h2>店铺信息</h2>
+      <h2>搴楅摵淇℃伅</h2>
 
-      <label>店铺名称</label>
-      <input v-model="form.shop_name" placeholder="如：阿旺小厨房" />
+      <label>搴楅摵鍚嶇О</label>
+      <input v-model="form.shop_name" placeholder="濡傦細闃挎椇灏忓帹鎴? />
 
-      <label>店铺Logo图片</label>
+      <label>搴楅摵Logo鍥剧墖</label>
       <input type="file" accept="image/*" @change="uploadLogo" :disabled="uploading" />
       <div v-if="form.logo_url" class="logo-preview">
         <img :src="form.logo_url" />
-        <button @click="form.logo_url = ''; logoChanged = true">移除Logo</button>
+        <button @click="form.logo_url = ''; logoChanged = true">绉婚櫎Logo</button>
       </div>
-      <p v-if="uploading" class="upload-tip">上传中...</p>
+      <p v-if="uploading" class="upload-tip">涓婁紶涓?..</p>
 
       <button class="btn-save" @click="saveSettings" :disabled="saving">
-        {{ saving ? '保存中...' : '保存设置' }}
+        {{ saving ? '淇濆瓨涓?..' : '淇濆瓨璁剧疆' }}
       </button>
 
       <p v-if="saveMsg" class="save-msg" :style="{ color: saveOk ? 'var(--success)' : 'var(--danger)' }">
@@ -35,12 +35,11 @@
       </p>
     </div>
 
-    <!-- 管理员账号管理提示 -->
+    <!-- 绠＄悊鍛樿处鍙风鐞嗘彁绀?-->
     <div class="settings-form" style="margin-top: 20px;">
-      <h2>管理员账号</h2>
+      <h2>绠＄悊鍛樿处鍙?/h2>
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
-        如需新增管理员，请在登录页点击"注册"，用新邮箱注册后自动成为管理员。
-      </p>
+        濡傞渶鏂板绠＄悊鍛橈紝璇峰湪鐧诲綍椤电偣鍑?娉ㄥ唽"锛岀敤鏂伴偖绠辨敞鍐屽悗鑷姩鎴愪负绠＄悊鍛樸€?      </p>
     </div>
   </div>
 </template>
@@ -54,7 +53,7 @@ const settings = inject('shopSettings')
 const router = useRouter()
 
 const form = ref({
-  shop_name: '阿旺小厨房',
+  shop_name: '闃挎椇灏忓帹鎴?,
   logo_url: ''
 })
 const uploading = ref(false)
@@ -77,7 +76,7 @@ async function loadSettings() {
   const { data } = await supabase.from('settings').select('*').single()
   if (data) {
     form.value = {
-      shop_name: data.shop_name || '阿旺小厨房',
+      shop_name: data.shop_name || '闃挎椇灏忓帹鎴?,
       logo_url: data.logo_url || ''
     }
   }
@@ -87,8 +86,7 @@ async function uploadLogo(e) {
   const file = e.target.files[0]
   if (!file) return
   uploading.value = true
-  // 提取原始文件扩展名，用时间戳+随机数作为文件名（避免中文等非法字符）
-  const ext = file.name.split('.').pop() || 'png'
+  // 鎻愬彇鍘熷鏂囦欢鎵╁睍鍚嶏紝鐢ㄦ椂闂存埑+闅忔満鏁颁綔涓烘枃浠跺悕锛堥伩鍏嶄腑鏂囩瓑闈炴硶瀛楃锛?  const ext = file.name.split('.').pop() || 'png'
   const fileName = `logo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
   const { data, error } = await supabase.storage.from('dish-images').upload(fileName, file, { upsert: true })
   if (!error) {
@@ -96,10 +94,10 @@ async function uploadLogo(e) {
     form.value.logo_url = publicUrl
     logoChanged.value = true
   } else {
-    console.error('上传Logo失败:', error)
-    let msg = '上传失败：' + error.message
+    console.error('涓婁紶Logo澶辫触:', error)
+    let msg = '涓婁紶澶辫触锛? + error.message
     if (error.message.includes('Bucket not found') || error.message.includes('bucket')) {
-      msg = '存储桶不存在！请在 Supabase SQL Editor 执行 supabase/init-storage.sql 脚本'
+      msg = '瀛樺偍妗朵笉瀛樺湪锛佽鍦?Supabase SQL Editor 鎵ц supabase/init-storage.sql 鑴氭湰'
     }
     alert(msg)
   }
@@ -108,14 +106,14 @@ async function uploadLogo(e) {
 
 async function saveSettings() {
   if (!form.value.shop_name.trim()) {
-    saveMsg.value = '店铺名称不能为空'
+    saveMsg.value = '搴楅摵鍚嶇О涓嶈兘涓虹┖'
     saveOk.value = false
     return
   }
   saving.value = true
   saveMsg.value = ''
 
-  // 先尝试 update，如果失败或影响 0 行则 upsert
+  // 鍏堝皾璇?update锛屽鏋滃け璐ユ垨褰卞搷 0 琛屽垯 upsert
   let error = null
   let updated = 0
 
@@ -131,7 +129,7 @@ async function saveSettings() {
   if (updateError) {
     error = updateError
   } else if (count === 0) {
-    // 没有 id=1 的记录，执行 insert
+    // 娌℃湁 id=1 鐨勮褰曪紝鎵ц insert
     const { error: insertError } = await supabase
       .from('settings')
       .insert({
@@ -144,10 +142,10 @@ async function saveSettings() {
 
   saving.value = false
   if (error) {
-    saveMsg.value = '保存失败：' + error.message
+    saveMsg.value = '淇濆瓨澶辫触锛? + error.message
     saveOk.value = false
   } else {
-    saveMsg.value = '保存成功！'
+    saveMsg.value = '淇濆瓨鎴愬姛锛?
     saveOk.value = true
     settings.value = {
       shop_name: form.value.shop_name.trim(),

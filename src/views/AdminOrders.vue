@@ -1,25 +1,25 @@
-<template>
+﻿<template>
   <div class="admin-page">
     <header class="admin-header">
-      <h1>客户订单</h1>
+      <h1>瀹㈡埛璁㈠崟</h1>
       <div class="header-actions">
-        <button class="btn-nav" @click="$router.push('/admin/dishes')">菜品</button>
-        <button class="btn-nav" @click="$router.push('/admin/customers')">客户</button>
-        <button class="btn-nav active-nav" @click="$router.push('/admin/orders')">订单</button>
-        <button class="btn-settings" @click="$router.push('/admin/settings')">设置</button>
-        <button class="btn-logout" @click="logout">退出</button>
-        <span class="version-badge">v2.0.23</span>
+        <button class="btn-nav" @click="$router.push('/admin/dishes')">鑿滃搧</button>
+        <button class="btn-nav" @click="$router.push('/admin/customers')">瀹㈡埛</button>
+        <button class="btn-nav active-nav" @click="$router.push('/admin/orders')">璁㈠崟</button>
+        <button class="btn-settings" @click="$router.push('/admin/settings')">璁剧疆</button>
+        <button class="btn-logout" @click="logout">閫€鍑?/button>
+        <span class="version-badge">v2.0.25</span>
       </div>
     </header>
 
-    <!-- 筛选 -->
+    <!-- 绛涢€?-->
     <div class="toolbar">
-      <input v-model="searchName" placeholder="搜索客户姓名" class="search-input" />
+      <input v-model="searchName" placeholder="鎼滅储瀹㈡埛濮撳悕" class="search-input" />
       <input v-model="dateFilter" type="date" class="date-input" />
-      <button v-if="dateFilter" @click="dateFilter = ''" class="btn-clear">清除日期</button>
+      <button v-if="dateFilter" @click="dateFilter = ''" class="btn-clear">娓呴櫎鏃ユ湡</button>
     </div>
 
-    <div v-if="filteredOrders.length === 0" class="empty-tip">暂无订单</div>
+    <div v-if="filteredOrders.length === 0" class="empty-tip">鏆傛棤璁㈠崟</div>
 
     <div v-else class="order-list">
       <div v-for="order in filteredOrders" :key="order.id" class="order-card">
@@ -28,41 +28,40 @@
           <span v-if="order.customer_phone" class="order-phone">{{ order.customer_phone }}</span>
           <span class="order-date">{{ formatDate(order.created_at) }}</span>
           <span v-if="order.expected_time" class="expected-badge">{{ formatDateTime(order.expected_time) }}</span>
-          <span class="order-arrow">{{ expandedOrder === order.id ? '▲' : '▼' }}</span>
+          <span class="order-arrow">{{ expandedOrder === order.id ? '鈻? : '鈻? }}</span>
         </div>
         <div class="order-summary">
-          共 {{ order.dishes.length }} 道菜，约 {{ order.total_time }} 分钟
+          鍏?{{ order.dishes.length }} 閬撹彍锛岀害 {{ order.total_time }} 鍒嗛挓
         </div>
 
-        <!-- 展开详情 -->
+        <!-- 灞曞紑璇︽儏 -->
         <div v-if="expandedOrder === order.id" class="order-detail">
-          <p v-if="order.customer_phone" class="customer-info">手机号：{{ order.customer_phone }}</p>
-          <p v-if="order.customer_address" class="customer-info">地址：{{ order.customer_address }}</p>
-          <h4>菜品：</h4>
+          <p v-if="order.customer_phone" class="customer-info">鎵嬫満鍙凤細{{ order.customer_phone }}</p>
+          <p v-if="order.customer_address" class="customer-info">鍦板潃锛歿{ order.customer_address }}</p>
+          <h4>鑿滃搧锛?/h4>
           <div v-for="d in order.dishes" :key="d.id" class="detail-row">
             <img v-if="d.image_url" :src="d.image_url" class="admin-detail-dish-img" @error="$event.target.style.display='none';$event.target.nextElementSibling.style.display='flex'" />
-            <div v-else class="admin-dish-img-ph">🍽️</div>
+            <div v-else class="admin-dish-img-ph">馃嵔锔?/div>
             <div class="detail-dish-text">
               <span v-if="d.category" :class="['detail-cat-tag', 'cat-' + d.category]">{{ d.category }}</span>
-              <strong>{{ d.name }}</strong>（{{ d.cook_time }}分钟）
-              <span v-if="d.customer_note" class="detail-note">{{ d.customer_note }}</span>
+              <strong>{{ d.name }}</strong>锛坽{ d.cook_time }}鍒嗛挓锛?              <span v-if="d.customer_note" class="detail-note">{{ d.customer_note }}</span>
             </div>
           </div>
 
-          <h4>食材汇总：</h4>
+          <h4>椋熸潗姹囨€伙細</h4>
           <div v-for="(ing, idx) in getIngredients(order)" :key="idx" class="summary-row">
             <span>{{ ing.name }}</span><span>{{ ing.amount }}</span>
           </div>
 
-          <h4>调料汇总：</h4>
+          <h4>璋冩枡姹囨€伙細</h4>
           <div v-for="(s, idx) in getSeasonings(order)" :key="idx" class="summary-row">
             <span>{{ s.name }}</span><span>{{ s.amount }}</span>
           </div>
 
-          <p v-if="order.note" class="order-note">订单备注：{{ order.note }}</p>
+          <p v-if="order.note" class="order-note">璁㈠崟澶囨敞锛歿{ order.note }}</p>
 
-          <!-- 删除订单 -->
-          <button class="btn-delete-order" @click.stop="deleteOrder(order.id)">删除此订单</button>
+          <!-- 鍒犻櫎璁㈠崟 -->
+          <button class="btn-delete-order" @click.stop="deleteOrder(order.id)">鍒犻櫎姝よ鍗?/button>
         </div>
       </div>
     </div>
@@ -107,7 +106,7 @@ async function loadOrders() {
     .select('*')
     .order('created_at', { ascending: false })
   if (error) return
-  // 查所有客户，做 name -> info 映射
+  // 鏌ユ墍鏈夊鎴凤紝鍋?name -> info 鏄犲皠
   const { data: custData } = await supabase
     .from('customers')
     .select('name, phone, address')
@@ -115,14 +114,14 @@ async function loadOrders() {
   ;(custData || []).forEach(c => {
     custMap[c.name] = { phone: c.phone || '', address: c.address || '' }
   })
-  // 收集需要补全的 dish id
+  // 鏀堕泦闇€瑕佽ˉ鍏ㄧ殑 dish id
   const needIds = new Set()
   ;(orderData || []).forEach(o => {
     ;(o.dishes || []).forEach(d => {
       if (!d.image_url || !d.category) needIds.add(d.id)
     })
   })
-  // 查 dishes 表补全图片和分类
+  // 鏌?dishes 琛ㄨˉ鍏ㄥ浘鐗囧拰鍒嗙被
   let dishMap = {}
   if (needIds.size > 0) {
     const { data: dishData } = await supabase
@@ -131,7 +130,7 @@ async function loadOrders() {
       .in('id', Array.from(needIds))
     ;(dishData || []).forEach(d => { dishMap[d.id] = d })
   }
-  // 合并客户信息 + 补全菜品数据
+  // 鍚堝苟瀹㈡埛淇℃伅 + 琛ュ叏鑿滃搧鏁版嵁
   orders.value = (orderData || []).map(o => ({
     ...o,
     customer_phone: custMap[o.customer_name]?.phone || '',
@@ -152,10 +151,10 @@ function toggleOrder(id) {
 }
 
 async function deleteOrder(id) {
-  if (!confirm('确定要删除这个订单吗？删除后不可恢复。')) return
+  if (!confirm('纭畾瑕佸垹闄よ繖涓鍗曞悧锛熷垹闄ゅ悗涓嶅彲鎭㈠銆?)) return
   const { error } = await supabase.from('orders').delete().eq('id', id)
   if (error) {
-    alert('删除失败：' + error.message)
+    alert('鍒犻櫎澶辫触锛? + error.message)
     return
   }
   orders.value = orders.value.filter(o => o.id !== id)
@@ -164,13 +163,13 @@ async function deleteOrder(id) {
 
 function formatDate(dateStr) {
   const d = new Date(dateStr)
-  return `${d.getMonth()+1}月${d.getDate()}日 ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`
+  return `${d.getMonth()+1}鏈?{d.getDate()}鏃?${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`
 }
 
 function formatDateTime(dt) {
   if (!dt) return ''
   const d = new Date(dt)
-  return `${d.getMonth()+1}月${d.getDate()}日 ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`
+  return `${d.getMonth()+1}鏈?{d.getDate()}鏃?${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`
 }
 
 function getIngredients(order) {
@@ -286,10 +285,10 @@ async function logout() {
   font-size: 10px; padding: 1px 7px; border-radius: 4px;
   font-weight: 500; color: #fff; flex-shrink: 0;
 }
-.detail-cat-tag.cat-荤菜 { background: rgba(229,57,53,0.85); }
-.detail-cat-tag.cat-素菜 { background: rgba(67,160,71,0.85); }
-.detail-cat-tag.cat-汤类 { background: rgba(30,136,229,0.85); }
-.detail-cat-tag.cat-粉面类 { background: rgba(245,124,0,0.85); }
+.detail-cat-tag.cat-鑽よ彍 { background: rgba(229,57,53,0.85); }
+.detail-cat-tag.cat-绱犺彍 { background: rgba(67,160,71,0.85); }
+.detail-cat-tag.cat-姹ょ被 { background: rgba(30,136,229,0.85); }
+.detail-cat-tag.cat-绮夐潰绫?{ background: rgba(245,124,0,0.85); }
 
 .detail-note { font-size: 11px; color: #e55a2b; margin-left: 4px; }
 

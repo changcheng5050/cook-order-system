@@ -1,45 +1,45 @@
-<template>
+﻿<template>
   <div class="admin-customers">
     <header class="admin-top">
-      <h2>客户管理</h2>
+      <h2>瀹㈡埛绠＄悊</h2>
       <div class="top-nav">
-        <button class="btn-nav" @click="$router.push('/admin/dishes')">菜品</button>
-        <button class="btn-nav active-nav" @click="$router.push('/admin/customers')">客户</button>
-        <button class="btn-nav" @click="$router.push('/admin/orders')">订单</button>
-        <button class="btn-nav" @click="$router.push('/admin/settings')">设置</button>
-        <button class="btn-logout" @click="logout">退出</button>
-        <span class="version-badge">v2.0.23</span>
+        <button class="btn-nav" @click="$router.push('/admin/dishes')">鑿滃搧</button>
+        <button class="btn-nav active-nav" @click="$router.push('/admin/customers')">瀹㈡埛</button>
+        <button class="btn-nav" @click="$router.push('/admin/orders')">璁㈠崟</button>
+        <button class="btn-nav" @click="$router.push('/admin/settings')">璁剧疆</button>
+        <button class="btn-logout" @click="logout">閫€鍑?/button>
+        <span class="version-badge">v2.0.25</span>
       </div>
     </header>
 
-    <!-- 新增客户表单 -->
+    <!-- 鏂板瀹㈡埛琛ㄥ崟 -->
     <div class="add-section">
-      <h3>新增客户</h3>
+      <h3>鏂板瀹㈡埛</h3>
       <div class="add-form">
-        <input v-model="newName" placeholder="客户姓名 *" class="form-input" />
-        <input v-model="newPhone" placeholder="手机号（选填）" class="form-input" />
-        <input v-model="newAddress" placeholder="地址（选填）" class="form-input" />
-        <input v-model="newNote" placeholder="备注（选填）" class="form-input" />
-        <button class="btn-add" @click="addCustomer">添加</button>
+        <input v-model="newName" placeholder="瀹㈡埛濮撳悕 *" class="form-input" />
+        <input v-model="newPhone" placeholder="鎵嬫満鍙凤紙閫夊～锛? class="form-input" />
+        <input v-model="newAddress" placeholder="鍦板潃锛堥€夊～锛? class="form-input" />
+        <input v-model="newNote" placeholder="澶囨敞锛堥€夊～锛? class="form-input" />
+        <button class="btn-add" @click="addCustomer">娣诲姞</button>
       </div>
       <p v-if="addError" class="error-msg">{{ addError }}</p>
     </div>
 
-    <!-- 客户列表 + 搜索 -->
+    <!-- 瀹㈡埛鍒楄〃 + 鎼滅储 -->
     <div class="list-section">
       <div class="list-header">
-        <h3>客户列表（共 {{ filteredCustomers.length }} 人）</h3>
-        <input v-model="searchKey" placeholder="🔍 搜索姓名/手机号..." class="search-input" />
+        <h3>瀹㈡埛鍒楄〃锛堝叡 {{ filteredCustomers.length }} 浜猴級</h3>
+        <input v-model="searchKey" placeholder="馃攳 鎼滅储濮撳悕/鎵嬫満鍙?.." class="search-input" />
       </div>
-      <div v-if="filteredCustomers.length === 0" class="empty-tip">未找到匹配客户</div>
+      <div v-if="filteredCustomers.length === 0" class="empty-tip">鏈壘鍒板尮閰嶅鎴?/div>
       <div v-for="c in filteredCustomers" :key="c.id" class="customer-card">
         <div class="customer-info">
           <h4>{{ c.name }}</h4>
-          <p v-if="c.phone">📱 {{ c.phone }}</p>
-          <p v-if="c.address">🏠 {{ c.address }}</p>
-          <p v-if="c.note" class="customer-note">📝 {{ c.note }}</p>
+          <p v-if="c.phone">馃摫 {{ c.phone }}</p>
+          <p v-if="c.address">馃彔 {{ c.address }}</p>
+          <p v-if="c.note" class="customer-note">馃摑 {{ c.note }}</p>
         </div>
-        <button class="btn-delete" @click="deleteCustomer(c)">删除</button>
+        <button class="btn-delete" @click="deleteCustomer(c)">鍒犻櫎</button>
       </div>
     </div>
   </div>
@@ -81,7 +81,7 @@ async function loadCustomers() {
 async function addCustomer() {
   const name = newName.value.trim()
   if (!name) {
-    addError.value = '客户姓名不能为空'
+    addError.value = '瀹㈡埛濮撳悕涓嶈兘涓虹┖'
     return
   }
   addError.value = ''
@@ -92,17 +92,17 @@ async function addCustomer() {
     note: newNote.value.trim() || null
   }).select('id')
   if (error) {
-    console.error('添加客户失败:', error)
+    console.error('娣诲姞瀹㈡埛澶辫触:', error)
     if (error.message.includes('unique') || error.code === '23505') {
-      addError.value = '该客户姓名已存在，不能重复'
+      addError.value = '璇ュ鎴峰鍚嶅凡瀛樺湪锛屼笉鑳介噸澶?
     } else if (error.message.includes('row-level') || error.code === '42501') {
-      addError.value = '权限不足，请在 Supabase 执行 upgrade-v2.sql'
+      addError.value = '鏉冮檺涓嶈冻锛岃鍦?Supabase 鎵ц upgrade-v2.sql'
     } else {
-      addError.value = '添加失败：' + error.message
+      addError.value = '娣诲姞澶辫触锛? + error.message
     }
     return
   }
-  // 清空表单
+  // 娓呯┖琛ㄥ崟
   newName.value = ''
   newPhone.value = ''
   newAddress.value = ''
@@ -111,10 +111,10 @@ async function addCustomer() {
 }
 
 async function deleteCustomer(c) {
-  if (!confirm(`确定删除客户「${c.name}」？\n删除后该客户将无法登录，历史订单会保留。`)) return
+  if (!confirm(`纭畾鍒犻櫎瀹㈡埛銆?{c.name}銆嶏紵\n鍒犻櫎鍚庤瀹㈡埛灏嗘棤娉曠櫥褰曪紝鍘嗗彶璁㈠崟浼氫繚鐣欍€俙)) return
   const { error } = await supabase.from('customers').delete().eq('id', c.id)
   if (error) {
-    alert('删除失败：' + error.message)
+    alert('鍒犻櫎澶辫触锛? + error.message)
     return
   }
   loadCustomers()
