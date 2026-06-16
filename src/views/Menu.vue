@@ -376,7 +376,43 @@ async function loadHistory() {
     .select('*')
     .eq('customer_name', customerName.value)
     .order('created_at', { ascending: false })
-  if (!error) orders.value = data || []
+  if (!error) {
+    orders.value = await enrichOrderDishes(data || [])
+  }
+}
+
+/** 从 dishes 表补全订单菜品中缺失的 image_url 和 category */
+async function enrichOrderDishes(orderList) {
+  // 收集所有需要补全的 dish id
+  const needIds = new Set()
+  orderList.forEach(order => {
+    ;(order.dishes || []).forEach(d => {
+      if (!d.image_url || !d.category) {
+        needIds.add(d.id)
+      }
+    })
+  })
+  // 查询 dishes 表获取完整数据
+  let dishMap = {}
+  if (needIds.size > 0) {
+    const { data: dishData } = await supabase
+      .from('dishes')
+      .select('id, image_url, category')
+      .in('id', Array.from(needIds))
+    ;(dishData || []).forEach(d => { dishMap[d.id] = d })
+  }
+  // 补全每个订单的菜品
+  return orderList.map(order => ({
+    ...order,
+    dishes: (order.dishes || []).map(d => {
+      const fullDish = dishMap[d.id]
+      return {
+        ...d,
+        image_url: d.image_url || (fullDish ? fullDish.image_url : ''),
+        category: d.category || (fullDish ? fullDish.category : '')
+      }
+    })
+  }))
 }
 
 function isInCart(dishId) {

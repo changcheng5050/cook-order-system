@@ -107,7 +107,7 @@ async function loadOrders() {
     .select('*')
     .order('created_at', { ascending: false })
   if (error) return
-  // 再查所有客户，做 name -> info 映射
+  // 查所有客户，做 name -> info 映射
   const { data: custData } = await supabase
     .from('customers')
     .select('name, phone, address')
@@ -115,11 +115,35 @@ async function loadOrders() {
   ;(custData || []).forEach(c => {
     custMap[c.name] = { phone: c.phone || '', address: c.address || '' }
   })
-  // 合并客户信息到订单
+  // 收集需要补全的 dish id
+  const needIds = new Set()
+  ;(orderData || []).forEach(o => {
+    ;(o.dishes || []).forEach(d => {
+      if (!d.image_url || !d.category) needIds.add(d.id)
+    })
+  })
+  // 查 dishes 表补全图片和分类
+  let dishMap = {}
+  if (needIds.size > 0) {
+    const { data: dishData } = await supabase
+      .from('dishes')
+      .select('id, image_url, category')
+      .in('id', Array.from(needIds))
+    ;(dishData || []).forEach(d => { dishMap[d.id] = d })
+  }
+  // 合并客户信息 + 补全菜品数据
   orders.value = (orderData || []).map(o => ({
     ...o,
     customer_phone: custMap[o.customer_name]?.phone || '',
-    customer_address: custMap[o.customer_name]?.address || ''
+    customer_address: custMap[o.customer_name]?.address || '',
+    dishes: (o.dishes || []).map(d => {
+      const fullDish = dishMap[d.id]
+      return {
+        ...d,
+        image_url: d.image_url || (fullDish ? fullDish.image_url : ''),
+        category: d.category || (fullDish ? fullDish.category : '')
+      }
+    })
   }))
 }
 
