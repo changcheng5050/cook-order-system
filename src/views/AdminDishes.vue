@@ -7,7 +7,7 @@
         <button class="btn-nav" @click="$router.push('/admin/orders')">订单</button>
         <button class="btn-settings" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
-        <span class="version-badge">v2.0.11</span>
+        <span class="version-badge">v2.0.12</span>
       </div>
     </header>
 
@@ -83,28 +83,28 @@
 
         <label>食材 *（名称和用量）</label>
         <div v-for="(ing, idx) in form.ingredients" :key="idx" class="kv-row">
-          <input v-model="ing.name" placeholder="食材名" />
+          <input v-model="ing.name" placeholder="食材名" list="ingredient-list" />
           <input v-model="ing.amount" placeholder="用量" />
           <button @click="form.ingredients.splice(idx, 1)">✕</button>
         </div>
-        <button class="btn-add-row" @click="form.ingredients.push({name:'',amount:''})">+ 添加食材</button>
+        <button class="btn-add-row" @click="form.ingredients.push({name:'',amount:'适量'})">+ 添加食材</button>
 
         <label>调料 *（名称和用量）</label>
         <div v-for="(s, idx) in form.seasonings" :key="idx" class="kv-row">
-          <input v-model="s.name" placeholder="调料名" />
+          <input v-model="s.name" placeholder="调料名" list="seasoning-list" />
           <input v-model="s.amount" placeholder="用量" />
           <button @click="form.seasonings.splice(idx, 1)">✕</button>
         </div>
-        <button class="btn-add-row" @click="form.seasonings.push({name:'',amount:''})">+ 添加调料</button>
+        <button class="btn-add-row" @click="form.seasonings.push({name:'',amount:'适量'})">+ 添加调料</button>
 
         <label>备注</label>
         <textarea v-model="form.notes" placeholder="如：含葱姜蒜，忌口请提前告知"></textarea>
 
         <label>菜品图片</label>
-        <input type="file" accept="image/*" @change="uploadImage" :disabled="uploading" />
-        <div v-if="form.image_url" class="preview-img-wrap">
+        <input type="file" accept="image/*" @change="onImageSelected" :disabled="uploading" />
+        <div v-if="form.image_url && !showCropper" class="preview-img-wrap">
           <img :src="form.image_url" class="preview-img" />
-          <button @click="form.image_url = ''">移除图片</button>
+          <button @click="form.image_url = ''; rawImageUrl = ''">移除图片</button>
         </div>
         <p v-if="uploading" class="upload-tip">上传中...</p>
 
@@ -114,13 +114,37 @@
         </div>
       </div>
     </div>
+
+    <!-- 图片裁剪弹窗 -->
+    <div v-if="showCropper" class="modal-mask" @click.self="cancelCrop">
+      <div class="modal-box cropper-modal">
+        <h3>裁剪图片</h3>
+        <div class="cropper-container">
+          <img ref="cropperImageRef" :src="rawImageUrl" />
+        </div>
+        <div class="modal-actions">
+          <button @click="cancelCrop">取消</button>
+          <button class="btn-save" @click="cropAndUpload">确认裁剪并上传</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- datalist：食材/调料联想 -->
+    <datalist id="ingredient-list">
+      <option v-for="item in ingredientSuggestions" :key="item" :value="item" />
+    </datalist>
+    <datalist id="seasoning-list">
+      <option v-for="item in seasoningSuggestions" :key="item" :value="item" />
+    </datalist>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { supabase } from '../lib/supabase'
 import { useRouter } from 'vue-router'
+import Cropper from 'cropperjs'
+import 'cropperjs/dist/cropper.min.css'
 
 const router = useRouter()
 const dishes = ref([])
@@ -148,6 +172,17 @@ const form = ref({
   is_active: true
 })
 
+// 食材/调料联想
+const ingredientSuggestions = ref([])
+const seasoningSuggestions = ref([])
+
+// 图片裁剪
+const showCropper = ref(false)
+const rawImageUrl = ref('')
+const cropperImageRef = ref(null)
+let cropperInstance = null
+let pendingFile = null
+
 const filteredList = computed(() => {
   let list = dishes.value
   if (searchKey.value) {
@@ -163,6 +198,7 @@ const filteredList = computed(() => {
 onMounted(() => {
   checkAuth()
   loadDishes()
+  loadSuggestions()
 })
 
 async function checkAuth() {
@@ -175,14 +211,45 @@ async function loadDishes() {
   dishes.value = data || []
 }
 
+// 从数据库加载所有用过的食材/调料名称，用于下拉联想
+async function loadSuggestions() {
+  const { data } = await supabase.from('dishes').select('ingredients, seasonings')
+  if (!data) return
+  const ingSet = new Set()
+  const seaSet = new Set()
+  data.forEach(d => {
+    ;(d.ingredients || []).forEach(i => { if (i.name) ingSet.add(i.name) })
+    ;(d.seasonings || []).forEach(s => { if (s.name) seaSet.add(s.name) })
+  })
+  ingredientSuggestions.value = Array.from(ingSet)
+  seasoningSuggestions.value = Array.from(seaSet)
+}
+
 function openAddModal() {
   isEdit.value = false
   editingId.value = null
   form.value = {
     name: '', category: '荤菜', temperature: '热菜', cook_time: 0,
-    flavor: [], ingredients: [{name:'',amount:'适量'}], seasonings: [{name:'',amount:'适量'}],
+    flavor: [],
+    // 默认填充食材：葱、姜、蒜、香菜
+    ingredients: [
+      { name: '葱', amount: '适量' },
+      { name: '姜', amount: '适量' },
+      { name: '蒜', amount: '适量' },
+      { name: '香菜', amount: '适量' }
+    ],
+    // 默认填充调料：生抽、老抽、酱油、糖、盐、醋
+    seasonings: [
+      { name: '生抽', amount: '适量' },
+      { name: '老抽', amount: '适量' },
+      { name: '酱油', amount: '适量' },
+      { name: '糖', amount: '适量' },
+      { name: '盐', amount: '适量' },
+      { name: '醋', amount: '适量' }
+    ],
     notes: '', image_url: '', is_active: true
   }
+  rawImageUrl.value = ''
   showModal.value = true
 }
 
@@ -195,12 +262,13 @@ function openEditModal(dish) {
     temperature: dish.temperature,
     cook_time: dish.cook_time,
     flavor: [...(dish.flavor || [])],
-    ingredients: (dish.ingredients || []).length ? [...dish.ingredients] : [{name:'',amount:''}],
-    seasonings: (dish.seasonings || []).length ? [...dish.seasonings] : [{name:'',amount:''}],
+    ingredients: (dish.ingredients || []).length ? [...dish.ingredients] : [{ name: '', amount: '适量' }],
+    seasonings: (dish.seasonings || []).length ? [...dish.seasonings] : [{ name: '', amount: '适量' }],
     notes: dish.notes || '',
     image_url: dish.image_url || '',
     is_active: dish.is_active
   }
+  rawImageUrl.value = dish.image_url || ''
   showModal.value = true
 }
 
@@ -210,81 +278,99 @@ function addTag() {
   tagInput.value = ''
 }
 
-/**
- * 压缩图片
- * @param {File} file - 原始图片文件
- * @returns {Promise<Blob>} - 压缩后的图片 Blob
- */
-function compressImage(file) {
-  return new Promise((resolve, reject) => {
+// 选择图片后，先进入裁剪
+function onImageSelected(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  pendingFile = file
+  const reader = new FileReader()
+  reader.onload = (ev) => {
+    rawImageUrl.value = ev.target.result
+    showCropper.value = true
+    nextTick(() => { initCropper() })
+  }
+  reader.readAsDataURL(file)
+  // 清空 input，允许重复选择同一文件
+  e.target.value = ''
+}
+
+function initCropper() {
+  if (cropperInstance) cropperInstance.destroy()
+  const el = cropperImageRef.value
+  if (!el) return
+  cropperInstance = new Cropper(el, {
+    aspectRatio: NaN,
+    viewMode: 1,
+    autoCropArea: 0.85,
+    background: false
+  })
+}
+
+function cancelCrop() {
+  showCropper.value = false
+  if (cropperInstance) { cropperInstance.destroy(); cropperInstance = null }
+  rawImageUrl.value = form.value.image_url || ''
+  pendingFile = null
+}
+
+// 确认裁剪后，压缩并上传
+async function cropAndUpload() {
+  if (!cropperInstance) return
+  uploading.value = true
+  const canvas = cropperInstance.getCroppedCanvas()
+  canvas.toBlob(async (blob) => {
+    if (!blob) { alert('裁剪失败'); uploading.value = false; return }
+    try {
+      const compressedBlob = await compressBlob(blob)
+      const ext = pendingFile ? (pendingFile.name.split('.').pop() || 'jpg') : 'jpg'
+      const fileName = `dish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+      const { data, error } = await supabase.storage.from('dish-images').upload(fileName, compressedBlob)
+      if (!error) {
+        const { data: { publicUrl } } = supabase.storage.from('dish-images').getPublicUrl(fileName)
+        form.value.image_url = publicUrl
+      } else {
+        alert('上传失败：' + error.message)
+      }
+    } catch (err) {
+      console.error(err)
+      alert('上传失败')
+    }
+    uploading.value = false
+    showCropper.value = false
+    cropperInstance.destroy()
+    cropperInstance = null
+    pendingFile = null
+  }, 'image/jpeg', 0.7)
+}
+
+// 压缩 Blob（复用原有压缩逻辑）
+function compressBlob(blob) {
+  return new Promise((resolve) => {
     const reader = new FileReader()
     reader.onload = (e) => {
       const img = new Image()
       img.onload = () => {
-        // 计算压缩后的尺寸（最大宽度 800px）
         let { width, height } = img
         const MAX_WIDTH = 800
         if (width > MAX_WIDTH) {
           height = Math.round(height * MAX_WIDTH / width)
           width = MAX_WIDTH
         }
-
-        // 用 Canvas 压缩
         const canvas = document.createElement('canvas')
         canvas.width = width
         canvas.height = height
-        const ctx = canvas.getContext('2d')
-        ctx.drawImage(img, 0, 0, width, height)
-
-        // 转成 Blob（质量 0.7 = 70%）
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height)
         canvas.toBlob(
-          (blob) => {
-            if (blob) resolve(blob)
-            else reject(new Error('压缩失败'))
-          },
-          'image/jpeg',
-          0.7
+          (b) => { if (b) resolve(b); else resolve(blob) },
+          'image/jpeg', 0.7
         )
       }
-      img.onerror = reject
+      img.onerror = () => resolve(blob)
       img.src = e.target.result
     }
-    reader.onerror = reject
-    reader.readAsDataURL(file)
+    reader.onerror = () => resolve(blob)
+    reader.readAsDataURL(blob)
   })
-}
-
-async function uploadImage(e) {
-  const file = e.target.files[0]
-  if (!file) return
-  uploading.value = true
-
-  // 压缩图片
-  let fileToUpload = file
-  try {
-    const compressedBlob = await compressImage(file)
-    fileToUpload = new File([compressedBlob], file.name, { type: 'image/jpeg' })
-    console.log(`图片压缩完成：${(file.size/1024).toFixed(1)}KB → ${(fileToUpload.size/1024).toFixed(1)}KB`)
-  } catch (err) {
-    console.warn('图片压缩失败，使用原图:', err)
-    fileToUpload = file
-  }
-
-  const ext = file.name.split('.').pop() || 'jpg'
-  const fileName = `dish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
-  const { data, error } = await supabase.storage.from('dish-images').upload(fileName, fileToUpload)
-  if (!error) {
-    const { data: { publicUrl } } = supabase.storage.from('dish-images').getPublicUrl(fileName)
-    form.value.image_url = publicUrl
-  } else {
-    console.error('上传图片失败:', error)
-    let msg = '上传失败：' + error.message
-    if (error.message.includes('Bucket not found') || error.message.includes('bucket')) {
-      msg = '存储桶不存在！请在 Supabase SQL Editor 执行 supabase/init-storage.sql 脚本'
-    }
-    alert(msg)
-  }
-  uploading.value = false
 }
 
 async function saveDish() {
@@ -312,6 +398,7 @@ async function saveDish() {
   } else {
     closeModal()
     loadDishes()
+    loadSuggestions() // 刷新联想数据
   }
 }
 
@@ -328,6 +415,7 @@ async function deleteDish(id) {
 
 function closeModal() {
   showModal.value = false
+  if (showCropper.value) cancelCrop()
 }
 
 async function logout() {
@@ -418,7 +506,7 @@ async function logout() {
 }
 .admin-modal label { display: block; font-size: 13px; font-weight: 500; margin: 10px 0 4px; }
 .admin-modal input, .admin-modal select, .admin-modal textarea {
-  width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px;
+  width: 100%; padding: 8px 10px; border:1px solid #ddd; border-radius: 8px;
   font-size: 13px; margin-bottom: 4px;
 }
 .admin-modal textarea { min-height: 60px; resize: vertical; }
@@ -447,4 +535,9 @@ async function logout() {
 .modal-actions { display: flex; gap: 12px; margin-top: 16px; }
 .modal-actions button { flex: 1; padding: 10px; border-radius: 8px; }
 .modal-actions .btn-save { background: var(--primary); color: #fff; font-weight: 500; }
+
+/* 裁剪弹窗 */
+.cropper-modal { max-width: 500px; }
+.cropper-container { margin: 12px 0; max-height: 400px; overflow: hidden; }
+.cropper-container img { display: block; max-width: 100%; }
 </style>

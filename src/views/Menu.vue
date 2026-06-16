@@ -293,7 +293,7 @@ import { supabase } from '../lib/supabase'
 import { useCart } from '../lib/cart'
 
 const settings = inject('shopSettings')
-const version = ref('v2.0.11')
+const version = ref('v2.0.12')
 
 // Logo 图片加载失败时，清除 url 让默认图标显示
 function onLogoError() {
