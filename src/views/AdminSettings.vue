@@ -8,7 +8,7 @@
         <button class="btn-nav" @click="$router.push('/admin/orders')">订单</button>
         <button class="btn-settings active-nav" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
-        <span class="version-badge">v2.0.7</span>
+        <span class="version-badge">v2.0.8</span>
       </div>
     </header>
 
@@ -87,7 +87,9 @@ async function uploadLogo(e) {
   const file = e.target.files[0]
   if (!file) return
   uploading.value = true
-  const fileName = `logo-${Date.now()}-${file.name}`
+  // 提取原始文件扩展名，用时间戳+随机数作为文件名（避免中文等非法字符）
+  const ext = file.name.split('.').pop() || 'png'
+  const fileName = `logo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
   const { data, error } = await supabase.storage.from('dish-images').upload(fileName, file, { upsert: true })
   if (!error) {
     const { data: { publicUrl } } = supabase.storage.from('dish-images').getPublicUrl(fileName)

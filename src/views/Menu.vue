@@ -292,7 +292,7 @@ import { supabase } from '../lib/supabase'
 import { useCart } from '../lib/cart'
 
 const settings = inject('shopSettings')
-const version = ref('v2.0.7')
+const version = ref('v2.0.8')
 
 // 页签状态
 const currentTab = ref('menu')
@@ -583,7 +583,7 @@ function orderAgain() {
   display: flex; align-items: center; gap: 10px;
   padding: 12px 16px; background: var(--primary); color: #fff;
 }
-.top-bar .logo { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+.top-bar .logo { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.4); flex-shrink: 0; }
 .top-bar h1 { font-size: 18px; font-weight: 600; flex: 1; }
 .version-in-header {
   font-size: 11px; color: rgba(255,255,255,0.75);
