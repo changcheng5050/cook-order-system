@@ -10,7 +10,7 @@
 import { ref, provide, onMounted } from 'vue'
 import { supabase } from './lib/supabase'
 
-const version = ref('v2.0.10')
+const version = ref('v2.0.11')
 
 const shopSettings = ref({
   shop_name: '阿旺小厨房',
@@ -23,6 +23,16 @@ async function loadSettings() {
     shopSettings.value = {
       shop_name: data.shop_name || '阿旺小厨房',
       logo_url: data.logo_url || ''
+    }
+    // 动态设置浏览器图标和标题
+    if (data.logo_url) {
+      const favicon = document.getElementById('dynamic-favicon')
+      const appleIcon = document.getElementById('dynamic-apple-icon')
+      if (favicon) favicon.href = data.logo_url
+      if (appleIcon) appleIcon.href = data.logo_url
+    }
+    if (data.shop_name) {
+      document.title = data.shop_name
     }
   }
 }

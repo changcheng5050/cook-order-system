@@ -8,7 +8,7 @@
         <button class="btn-nav" @click="$router.push('/admin/orders')">订单</button>
         <button class="btn-settings active-nav" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
-        <span class="version-badge">v2.0.9</span>
+        <span class="version-badge">v2.0.11</span>
       </div>
     </header>
 
@@ -114,13 +114,34 @@ async function saveSettings() {
   }
   saving.value = true
   saveMsg.value = ''
-  const { error } = await supabase
+
+  // 先尝试 update，如果失败或影响 0 行则 upsert
+  let error = null
+  let updated = 0
+
+  const { count, error: updateError } = await supabase
     .from('settings')
     .update({
       shop_name: form.value.shop_name.trim(),
       logo_url: form.value.logo_url
     })
     .eq('id', 1)
+    .select('*', { count: 'exact' })
+
+  if (updateError) {
+    error = updateError
+  } else if (count === 0) {
+    // 没有 id=1 的记录，执行 insert
+    const { error: insertError } = await supabase
+      .from('settings')
+      .insert({
+        id: 1,
+        shop_name: form.value.shop_name.trim(),
+        logo_url: form.value.logo_url
+      })
+    error = insertError
+  }
+
   saving.value = false
   if (error) {
     saveMsg.value = '保存失败：' + error.message
@@ -128,7 +149,6 @@ async function saveSettings() {
   } else {
     saveMsg.value = '保存成功！'
     saveOk.value = true
-    // 同步更新全局状态
     settings.value = {
       shop_name: form.value.shop_name.trim(),
       logo_url: form.value.logo_url

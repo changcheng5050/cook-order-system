@@ -7,7 +7,7 @@
         <button class="btn-nav" @click="$router.push('/admin/orders')">订单</button>
         <button class="btn-settings" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
-        <span class="version-badge">v2.0.9</span>
+        <span class="version-badge">v2.0.11</span>
       </div>
     </header>
 
@@ -40,8 +40,8 @@
           <p v-if="dish.notes" class="dish-note-text">📝 {{ dish.notes }}</p>
         </div>
         <div class="admin-dish-actions">
-          <button @click="openEditModal(dish)">编辑</button>
-          <button @click="toggleActive(dish)">{{ dish.is_active ? '下架' : '上架' }}</button>
+          <button class="btn-edit" @click="openEditModal(dish)">编辑</button>
+          <button :class="dish.is_active ? 'btn-unlist' : 'btn-list'" @click="toggleActive(dish)">{{ dish.is_active ? '下架' : '上架' }}</button>
           <button class="btn-del" @click="deleteDish(dish.id)">删除</button>
         </div>
       </div>
@@ -180,7 +180,7 @@ function openAddModal() {
   editingId.value = null
   form.value = {
     name: '', category: '荤菜', temperature: '热菜', cook_time: 0,
-    flavor: [], ingredients: [{name:'',amount:''}], seasonings: [{name:'',amount:''}],
+    flavor: [], ingredients: [{name:'',amount:'适量'}], seasonings: [{name:'',amount:'适量'}],
     notes: '', image_url: '', is_active: true
   }
   showModal.value = true
@@ -210,13 +210,69 @@ function addTag() {
   tagInput.value = ''
 }
 
+/**
+ * 压缩图片
+ * @param {File} file - 原始图片文件
+ * @returns {Promise<Blob>} - 压缩后的图片 Blob
+ */
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        // 计算压缩后的尺寸（最大宽度 800px）
+        let { width, height } = img
+        const MAX_WIDTH = 800
+        if (width > MAX_WIDTH) {
+          height = Math.round(height * MAX_WIDTH / width)
+          width = MAX_WIDTH
+        }
+
+        // 用 Canvas 压缩
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, width, height)
+
+        // 转成 Blob（质量 0.7 = 70%）
+        canvas.toBlob(
+          (blob) => {
+            if (blob) resolve(blob)
+            else reject(new Error('压缩失败'))
+          },
+          'image/jpeg',
+          0.7
+        )
+      }
+      img.onerror = reject
+      img.src = e.target.result
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
 async function uploadImage(e) {
   const file = e.target.files[0]
   if (!file) return
   uploading.value = true
-  const ext = file.name.split('.').pop() || 'png'
+
+  // 压缩图片
+  let fileToUpload = file
+  try {
+    const compressedBlob = await compressImage(file)
+    fileToUpload = new File([compressedBlob], file.name, { type: 'image/jpeg' })
+    console.log(`图片压缩完成：${(file.size/1024).toFixed(1)}KB → ${(fileToUpload.size/1024).toFixed(1)}KB`)
+  } catch (err) {
+    console.warn('图片压缩失败，使用原图:', err)
+    fileToUpload = file
+  }
+
+  const ext = file.name.split('.').pop() || 'jpg'
   const fileName = `dish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
-  const { data, error } = await supabase.storage.from('dish-images').upload(fileName, file)
+  const { data, error } = await supabase.storage.from('dish-images').upload(fileName, fileToUpload)
   if (!error) {
     const { data: { publicUrl } } = supabase.storage.from('dish-images').getPublicUrl(fileName)
     form.value.image_url = publicUrl
@@ -342,9 +398,12 @@ async function logout() {
 .dish-note-text { color: #e55a2b !important; font-size: 11px !important; }
 .admin-dish-actions { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
 .admin-dish-actions button {
-  padding: 4px 8px; border-radius: 6px; font-size: 11px;
+  padding: 4px 12px; border-radius: 6px; font-size: 11px;
   background: #f0f0f0; color: var(--text);
 }
+.btn-edit { background: #e8f0fe !important; color: #1677ff !important; }
+.btn-list { background: #e6f7ee !important; color: #00a870 !important; }
+.btn-unlist { background: #fff7e6 !important; color: #fa8c16 !important; }
 .btn-del { background: #fff0f0 !important; color: var(--danger) !important; }
 .empty-tip { text-align: center; color: var(--text-secondary); padding: 40px 0; font-size: 13px; }
 
