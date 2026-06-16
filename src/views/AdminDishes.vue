@@ -7,7 +7,7 @@
         <button class="btn-nav" @click="$router.push('/admin/orders')">订单</button>
         <button class="btn-settings" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
-        <span class="version-badge">v2.0.12</span>
+        <span class="version-badge">v2.0.13</span>
       </div>
     </header>
 
@@ -81,16 +81,30 @@
           </span>
         </div>
 
-        <label>食材 *（名称和用量）</label>
-        <div v-for="(ing, idx) in form.ingredients" :key="idx" class="kv-row">
+        <label>食材 *（名称和用量，可拖拽排序）</label>
+        <div v-for="(ing, idx) in form.ingredients" :key="'ing-'+idx"
+          class="kv-row drag-row"
+          draggable="true"
+          @dragstart="onDragStart(idx, 'ing')"
+          @dragover.prevent="onDragOver(idx, 'ing')"
+          @drop="onDrop(idx, 'ing')"
+        >
+          <span class="drag-handle" title="拖拽排序">⠿</span>
           <input v-model="ing.name" placeholder="食材名" list="ingredient-list" />
           <input v-model="ing.amount" placeholder="用量" />
           <button @click="form.ingredients.splice(idx, 1)">✕</button>
         </div>
         <button class="btn-add-row" @click="form.ingredients.push({name:'',amount:'适量'})">+ 添加食材</button>
 
-        <label>调料 *（名称和用量）</label>
-        <div v-for="(s, idx) in form.seasonings" :key="idx" class="kv-row">
+        <label>调料 *（名称和用量，可拖拽排序）</label>
+        <div v-for="(s, idx) in form.seasonings" :key="'s-'+idx"
+          class="kv-row drag-row"
+          draggable="true"
+          @dragstart="onDragStart(idx, 'sea')"
+          @dragover.prevent="onDragOver(idx, 'sea')"
+          @drop="onDrop(idx, 'sea')"
+        >
+          <span class="drag-handle" title="拖拽排序">⠿</span>
           <input v-model="s.name" placeholder="调料名" list="seasoning-list" />
           <input v-model="s.amount" placeholder="用量" />
           <button @click="form.seasonings.splice(idx, 1)">✕</button>
@@ -100,7 +114,7 @@
         <label>备注</label>
         <textarea v-model="form.notes" placeholder="如：含葱姜蒜，忌口请提前告知"></textarea>
 
-        <label>菜品图片</label>
+        <label>菜品图片（可选裁剪）</label>
         <input type="file" accept="image/*" @change="onImageSelected" :disabled="uploading" />
         <div v-if="form.image_url && !showCropper" class="preview-img-wrap">
           <img :src="form.image_url" class="preview-img" />
@@ -115,11 +129,11 @@
       </div>
     </div>
 
-    <!-- 图片裁剪弹窗（原生 Canvas 实现） -->
+    <!-- 图片裁剪弹窗（可选，可跳过） -->
     <div v-if="showCropper" class="modal-mask" @click.self="cancelCrop">
       <div class="modal-box cropper-modal">
-        <h3>裁剪图片</h3>
-        <p class="crop-hint">拖动选择区域，滚轮缩放大小，拖动四角调整范围</p>
+        <h3>裁剪图片（可选）</h3>
+        <p class="crop-hint">滚轮缩放 · 拖动裁剪框移动 · 拖角调整大小</p>
         <div
           ref="cropContainerRef"
           class="crop-canvas-wrap"
@@ -143,12 +157,13 @@
           </div>
         </div>
         <div class="crop-toolbar">
-          <button @click="zoomCrop(0.9)">缩小</button>
-          <button @click="zoomCrop(1.1)">放大</button>
-          <span class="crop-size-info">{{ Math.round(cropBox.w) }} × {{ Math.round(cropBox.h) }}</span>
+          <button @click="zoomCrop(0.88)">缩小</button>
+          <button @click="zoomCrop(1.12)">放大</button>
+          <span class="crop-size-info">裁剪输出：{{ cropOutW }} × {{ cropOutH }} px</span>
         </div>
         <div class="modal-actions">
           <button @click="cancelCrop">取消</button>
+          <button class="btn-skip-crop" @click="skipCrop">跳过裁剪，直接上传</button>
           <button class="btn-save" @click="cropAndUpload">确认裁剪并上传</button>
         </div>
       </div>
@@ -199,22 +214,29 @@ const form = ref({
 const ingredientSuggestions = ref([])
 const seasoningSuggestions = ref([])
 
-// 图片裁剪（原生 Canvas）
+// 图片裁剪
 const showCropper = ref(false)
 const rawImageUrl = ref('')
 const cropCanvasRef = ref(null)
 const cropContainerRef = ref(null)
 let cropImageObj = null
+let cropImageNaturalW = 0
+let cropImageNaturalH = 0
 
 // 裁剪框状态
 const cropBox = ref({ x: 20, y: 20, w: 200, h: 150 })
-let cropDrag = null // { type: 'move'|'resize-nw'|..., startX, startY, startBox }
+const cropOutW = ref(0)
+const cropOutH = ref(0)
+let cropDrag = null
 let imgScale = 1
 let imgOffsetX = 0
 let imgOffsetY = 0
 let pendingFile = null
 let containerW = 400
 let containerH = 320
+
+// 拖拽排序
+let dragState = { idx: -1, type: '' }
 
 const filteredList = computed(() => {
   let list = dishes.value
@@ -309,7 +331,25 @@ function addTag() {
   tagInput.value = ''
 }
 
-// 选择图片 → 进入裁剪
+// ========== 拖拽排序 ==========
+function onDragStart(idx, type) {
+  dragState = { idx, type }
+}
+function onDragOver(idx, type) {
+  if (dragState.type !== type) return
+}
+function onDrop(idx, type) {
+  if (dragState.type !== type) return
+  const from = dragState.idx
+  const to = idx
+  if (from === to) return
+  const list = type === 'ing' ? form.value.ingredients : form.value.seasonings
+  const [item] = list.splice(from, 1)
+  list.splice(to, 0, item)
+  dragState = { idx: -1, type: '' }
+}
+
+// ========== 图片选择 → 裁剪（可选） ==========
 function onImageSelected(e) {
   const file = e.target.files[0]
   if (!file) return
@@ -329,21 +369,23 @@ function initCrop() {
   const img = new Image()
   img.onload = () => {
     cropImageObj = img
+    cropImageNaturalW = img.naturalWidth || img.width
+    cropImageNaturalH = img.naturalHeight || img.height
     const wrap = cropContainerRef.value
     if (!wrap) return
     containerW = wrap.clientWidth || 380
     containerH = 300
 
-    // 让图片适应容器
-    let scale = containerW / img.width
-    if (img.height * scale > containerH) scale = containerH / img.height
+    // 图片适应容器（显示用）
+    let scale = containerW / cropImageNaturalW
+    if (cropImageNaturalH * scale > containerH) scale = containerH / cropImageNaturalH
     imgScale = scale
-    imgOffsetX = (containerW - img.width * scale) / 2
-    imgOffsetY = (containerH - img.height * scale) / 2
+    imgOffsetX = (containerW - cropImageNaturalW * scale) / 2
+    imgOffsetY = (containerH - cropImageNaturalH * scale) / 2
 
-    // 裁剪框居中，占图片的 85%
-    let cw = img.width * scale * 0.85
-    let ch = img.height * scale * 0.85
+    // 裁剪框初始占显示图片的 85%
+    let cw = cropImageNaturalW * scale * 0.85
+    let ch = cropImageNaturalH * scale * 0.85
     if (cw > containerW - 40) cw = containerW - 40
     if (ch > containerH - 40) ch = containerH - 40
     cropBox.value = {
@@ -352,7 +394,7 @@ function initCrop() {
       w: cw,
       h: ch
     }
-
+    updateCropOutSize()
     drawCropCanvas()
   }
   img.src = rawImageUrl.value
@@ -368,27 +410,39 @@ function drawCropCanvas() {
   ctx.drawImage(
     cropImageObj,
     imgOffsetX, imgOffsetY,
-    cropImageObj.width * imgScale,
-    cropImageObj.height * imgScale
+    cropImageNaturalW * imgScale,
+    cropImageNaturalH * imgScale
   )
+}
+
+function updateCropOutSize() {
+  const cb = cropBox.value
+  const ow = Math.round(cb.w / imgScale)
+  const oh = Math.round(cb.h / imgScale)
+  cropOutW.value = ow
+  cropOutH.value = oh
 }
 
 // 缩放
 function zoomCrop(factor) {
   imgScale *= factor
+  if (imgScale < 0.1) imgScale = 0.1
+  if (imgScale > 10) imgScale = 10
+  imgOffsetX = (containerW - cropImageNaturalW * imgScale) / 2
+  imgOffsetY = (containerH - cropImageNaturalH * imgScale) / 2
   drawCropCanvas()
+  updateCropOutSize()
 }
 function onCropWheel(e) {
   zoomCrop(e.deltaY > 0 ? 0.92 : 1.08)
 }
 
-// 拖动裁剪框移动
+// 拖动裁剪框
 function onCropMouseDown(e) {
   const rect = cropContainerRef.value.getBoundingClientRect()
   const mx = e.clientX - rect.left
   const my = e.clientY - rect.top
   const cb = cropBox.value
-  // 判断是否在裁剪框内
   if (mx >= cb.x && mx <= cb.x + cb.w && my >= cb.y && my <= cb.y + cb.h) {
     cropDrag = { type: 'move', startX: mx, startY: my, ...cb }
   }
@@ -400,19 +454,18 @@ function onCropMouseMove(e) {
   const my = e.clientY - rect.top
   const dx = mx - cropDrag.startX
   const dy = my - cropDrag.startY
-
   if (cropDrag.type === 'move') {
     cropBox.value.x = clamp(cropDrag.x + dx, 0, containerW - cropBox.value.w)
     cropBox.value.y = clamp(cropDrag.y + dy, 0, containerH - cropBox.value.h)
   } else if (cropDrag.type.startsWith('resize')) {
     handleResize(dx, dy)
   }
+  updateCropOutSize()
 }
 function onCropMouseUp() {
   cropDrag = null
 }
 
-// 拖动四角调整大小
 function startResize(corner, e) {
   const rect = cropContainerRef.value.getBoundingClientRect()
   cropDrag = {
@@ -424,7 +477,7 @@ function startResize(corner, e) {
 }
 function handleResize(dx, dy) {
   const s = cropDrag
-  const minSize = 30
+  const minSize = 20
   if (cropDrag.type === 'resize-se') {
     cropBox.value.w = clamp(s.w + dx, minSize, containerW - s.x)
     cropBox.value.h = clamp(s.h + dy, minSize, containerH - s.y)
@@ -457,33 +510,55 @@ function cancelCrop() {
   cropImageObj = null
 }
 
-// 确认裁剪 → Canvas 提取 → 压缩 → 上传
+// ========== 跳过裁剪，直接压缩上传原图 ==========
+async function skipCrop() {
+  if (!pendingFile) return
+  uploading.value = true
+  try {
+    const compressedBlob = await compressImage(pendingFile)
+    const ext = pendingFile.name.split('.').pop() || 'jpg'
+    const fileName = `dish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+    const { error } = await supabase.storage.from('dish-images').upload(fileName, compressedBlob)
+    if (!error) {
+      const { data: { publicUrl } } = supabase.storage.from('dish-images').getPublicUrl(fileName)
+      form.value.image_url = publicUrl
+    } else {
+      alert('上传失败：' + error.message)
+    }
+  } catch (err) {
+    console.error(err)
+    alert('上传失败')
+  }
+  uploading.value = false
+  showCropper.value = false
+  cropImageObj = null
+  pendingFile = null
+}
+
+// ========== 确认裁剪 → 用原图坐标裁剪 → 压缩上传 ==========
 async function cropAndUpload() {
   if (!cropImageObj) return
   uploading.value = true
 
   try {
-    // 计算裁剪区域在原图上的坐标
     const cb = cropBox.value
     const sx = (cb.x - imgOffsetX) / imgScale
     const sy = (cb.y - imgOffsetY) / imgScale
     const sw = cb.w / imgScale
     const sh = cb.h / imgScale
 
-    // 创建临时 Canvas 裁剪
-    const outW = Math.round(sw)
-    const outH = Math.round(sh)
+    const outW = Math.max(1, Math.round(sw))
+    const outH = Math.max(1, Math.round(sh))
     const tmpCanvas = document.createElement('canvas')
     tmpCanvas.width = outW
     tmpCanvas.height = outH
     const ctx = tmpCanvas.getContext('2d')
     ctx.drawImage(cropImageObj, sx, sy, sw, sh, 0, 0, outW, outH)
 
-    // 转 Blob 再压缩
     tmpCanvas.toBlob(async (blob) => {
       if (!blob) { alert('裁剪失败'); uploading.value = false; return }
       try {
-        const compressedBlob = await compressBlob(blob)
+        const compressedBlob = await compressCroppedBlob(blob)
         const ext = pendingFile ? (pendingFile.name.split('.').pop() || 'jpg') : 'jpg'
         const fileName = `dish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
         const { error } = await supabase.storage.from('dish-images').upload(fileName, compressedBlob)
@@ -501,7 +576,7 @@ async function cropAndUpload() {
       showCropper.value = false
       cropImageObj = null
       pendingFile = null
-    }, 'image/jpeg', 0.95)
+    }, 'image/jpeg', 0.92)
   } catch (err) {
     console.error(err)
     alert('裁剪出错')
@@ -509,24 +584,51 @@ async function cropAndUpload() {
   }
 }
 
-// 压缩 Blob
-function compressBlob(blob) {
+// 压缩原图（跳过裁剪时使用，最大宽度1200px，质量0.8）
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        let { width, height } = img
+        const MAX_W = 1200
+        if (width > MAX_W) {
+          height = Math.round(height * MAX_W / width)
+          width = MAX_W
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height)
+        canvas.toBlob((b) => { resolve(b || file) }, 'image/jpeg', 0.8)
+      }
+      img.onerror = reject
+      img.src = e.target.result
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+// 裁剪后的压缩（只执行一次，质量 0.8）
+function compressCroppedBlob(blob) {
   return new Promise((resolve) => {
     const reader = new FileReader()
     reader.onload = (e) => {
       const img = new Image()
       img.onload = () => {
         let { width, height } = img
-        const MAX_WIDTH = 800
-        if (width > MAX_WIDTH) {
-          height = Math.round(height * MAX_WIDTH / width)
-          width = MAX_WIDTH
+        const MAX_W = 1200
+        if (width > MAX_W) {
+          height = Math.round(height * MAX_W / width)
+          width = MAX_W
         }
         const canvas = document.createElement('canvas')
         canvas.width = width
         canvas.height = height
         canvas.getContext('2d').drawImage(img, 0, 0, width, height)
-        canvas.toBlob((b) => { resolve(b || blob) }, 'image/jpeg', 0.7)
+        canvas.toBlob((b) => { resolve(b || blob) }, 'image/jpeg', 0.8)
       }
       img.onerror = () => resolve(blob)
       img.src = e.target.result
@@ -588,7 +690,7 @@ async function logout() {
 </script>
 
 <style scoped>
-.admin-page { max-width: 480px; margin: 0 auto; padding-bottom: 20px; }
+.admin-page { max-width: 480px; margin:0 auto; padding-bottom: 20px; }
 
 .admin-header {
   display: flex; justify-content: space-between; align-items: center;
@@ -669,7 +771,7 @@ async function logout() {
 }
 .admin-modal label { display: block; font-size: 13px; font-weight: 500; margin: 10px 0 4px; }
 .admin-modal input, .admin-modal select, .admin-modal textarea {
-  width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px;
+  width: 100%; padding: 8px 10px; border:1px solid #ddd; border-radius: 8px;
   font-size: 13px; margin-bottom: 4px;
 }
 .admin-modal textarea { min-height: 60px; resize: vertical; }
@@ -684,6 +786,14 @@ async function logout() {
 .tags-edit { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
 .tags-edit .tag span { cursor: pointer; margin-left: 2px; }
 .kv-row { display: flex; gap: 6px; margin-bottom: 4px; align-items: center; }
+.drag-row { cursor: grab; }
+.drag-row:active { cursor: grabbing; }
+.drag-handle {
+  font-size: 16px; color: #bbb; cursor: grab; flex-shrink: 0;
+  display: flex; align-items: center; padding: 0 2px;
+  user-select: none;
+}
+.drag-row:hover .drag-handle { color: #888; }
 .kv-row input { flex: 1; }
 .kv-row button {
   width: 24px; height: 24px; border-radius: 50%; background: #f0f0f0;
@@ -699,7 +809,7 @@ async function logout() {
 .modal-actions button { flex: 1; padding: 10px; border-radius: 8px; }
 .modal-actions .btn-save { background: var(--primary); color: #fff; font-weight: 500; }
 
-/* ========== 裁剪弹窗（原生实现）========== */
+/* 裁剪弹窗 */
 .cropper-modal { max-width: 480px; }
 .crop-hint {
   font-size: 12px; color: #888; text-align: center; margin: -6px 0 8px;
@@ -709,9 +819,11 @@ async function logout() {
   background: #222; border-radius: 8px;
   user-select: none; touch-action: none;
   cursor: move;
+  min-height: 280px;
+  display: flex; align-items: center; justify-content: center;
 }
 .crop-canvas {
-  display: block; width: 100%;
+  display: block; max-width: 100%; max-height: 280px;
 }
 .crop-box {
   position: absolute; border: 2px dashed #fff;
@@ -721,7 +833,7 @@ async function logout() {
 .crop-handle {
   position: absolute; width: 14px; height: 14px;
   background: #1677ff; border: 2px solid #fff; border-radius: 50%;
-  z-index: 3; cursor: nwse-resize;
+  z-index: 3;
 }
 .crop-handle.nw { top: -7px; left: -7px; cursor: nw-resize; }
 .crop-handle.ne { top: -7px; right: -7px; cursor: nesw-resize; }
@@ -746,4 +858,10 @@ async function logout() {
 .crop-size-info {
   margin-left: auto; font-size: 12px; color: #888;
 }
+.btn-skip-crop {
+  padding: 10px; border-radius: 8px; font-size: 13px;
+  background: #fff7e6; color: #d46b08; border: 1px solid #ffd591;
+  cursor: pointer; font-weight: 500;
+}
+.btn-skip-crop:hover { background: #ffe7ba; }
 </style>
