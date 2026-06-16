@@ -1,42 +1,42 @@
-﻿<template>
+<template>
   <div class="menu-page">
-    <!-- 椤堕儴鏍囬鏍?-->
+    <!-- 顶部标题栏 -->
     <header class="top-bar">
       <img v-if="settings.logo_url" :src="settings.logo_url" class="logo" @error="onLogoError" />
-      <div v-else class="logo-default">馃嵆</div>
+      <div v-else class="logo-default">🍳</div>
       <h1>{{ settings.shop_name }}</h1>
       <span class="version-in-header">{{ version }}</span>
     </header>
 
         <div v-if="!customerName" class="name-modal">
           <div class="name-box">
-            <h2>馃嵆 {{ settings.shop_name }}</h2>
-            <p class="welcome-text">娆㈣繋鍏変复锛岃杈撳叆鎮ㄧ殑濮撳悕</p>
-            <input v-model="nameInput" placeholder="璇疯緭鍏ュ鍚? @keyup.enter="verifyName" />
+            <h2>🍳 {{ settings.shop_name }}</h2>
+            <p class="welcome-text">欢迎光临，请输入您的姓名</p>
+            <input v-model="nameInput" placeholder="请输入姓名" @keyup.enter="verifyName" />
             <div v-if="nameError" class="name-error">{{ nameError }}</div>
-            <button @click="verifyName">杩涘叆鑿滃崟</button>
+            <button @click="verifyName">进入菜单</button>
             <p class="version-text">v{{ version }}</p>
           </div>
         </div>
 
-    <!-- 鐧诲綍鍚庣殑椤电瀵艰埅 + 閫€鍑虹櫥褰?-->
+    <!-- 登录后的页签导航 + 退出登录 -->
     <nav v-if="customerName" class="tab-nav">
       <div class="tab-group">
         <button
           :class="['tab-btn', { active: currentTab === 'menu' }]"
           @click="currentTab = 'menu'"
-        >馃嵔锔?鐐硅彍</button>
+        >🍽️ 点菜</button>
         <button
           :class="['tab-btn', { active: currentTab === 'history' }]"
           @click="currentTab = 'history'"
-        >馃搵 鍘嗗彶璁㈠崟</button>
+        >📋 历史订单</button>
       </div>
-      <button class="logout-btn" @click="doLogout">閫€鍑虹櫥褰?/button>
+      <button class="logout-btn" @click="doLogout">退出登录</button>
     </nav>
 
-    <!-- ========== 鐐硅彍椤电 ========== -->
+    <!-- ========== 点菜页签 ========== -->
     <div v-if="customerName && currentTab === 'menu'">
-      <!-- 鍒嗙被瀵艰埅 -->
+      <!-- 分类导航 -->
       <nav class="category-nav">
         <button
           v-for="cat in categories"
@@ -46,12 +46,12 @@
         >{{ cat }}</button>
       </nav>
 
-      <!-- 鑿滃搧鍒楄〃 -->
+      <!-- 菜品列表 -->
       <div class="dish-list">
         <div v-for="dish in filteredDishes" :key="dish.id" class="dish-card">
           <div class="dish-img" @click="showDishDetail(dish)">
             <img v-if="dish.image_url" :src="dish.image_url" />
-            <div v-else class="img-placeholder">鏆傛棤鍥剧墖</div>
+            <div v-else class="img-placeholder">暂无图片</div>
             <span v-if="dish.category" :class="['cat-tag', 'cat-' + dish.category]">{{ dish.category }}</span>
           </div>
           <div class="dish-info">
@@ -59,16 +59,16 @@
             <div class="flavor-tags">
               <span v-for="f in dish.flavor" :key="f" class="flavor-tag">{{ f }}</span>
             </div>
-            <p class="cook-time">鈴?{{ dish.cook_time }}鍒嗛挓</p>
-            <p v-if="dish.notes" class="dish-notes">馃摑 {{ dish.notes }}</p>
+            <p class="cook-time">⏱ {{ dish.cook_time }}分钟</p>
+            <p v-if="dish.notes" class="dish-notes">📝 {{ dish.notes }}</p>
           </div>
-          <!-- 宸叉坊鍔狅細缁胯壊瀵瑰嬀锛堢偣鍑荤Щ闄わ級锛涙湭娣诲姞锛氭鑹?鍙凤紙鐐瑰嚮娣诲姞锛?-->
+          <!-- 已添加：绿色对勾（点击移除）；未添加：橙色+号（点击添加） -->
           <button
             v-if="isInCart(dish.id)"
             class="add-btn checked-btn"
             @click="removeFromCart(dish.id)"
-            title="鐐瑰嚮浠庨妗岀Щ闄?
-          >鉁?/button>
+            title="点击从餐桌移除"
+          >✓</button>
           <button
             v-else
             class="add-btn"
@@ -77,60 +77,60 @@
         </div>
       </div>
 
-      <!-- 搴曢儴璐墿杞︽爮 -->
+      <!-- 底部购物车栏 -->
       <div v-if="cartItems.length > 0" class="cart-bar" @click="showCart = true">
         <div class="cart-icon">
-          馃洅
+          🛒
           <span class="cart-count">{{ cartItems.length }}</span>
         </div>
         <div class="cart-info">
-          <span>宸查€?{{ cartItems.length }} 閬撹彍</span>
-          <span>绾?{{ getTotalTime() }} 鍒嗛挓</span>
+          <span>已选 {{ cartItems.length }} 道菜</span>
+          <span>约 {{ getTotalTime() }} 分钟</span>
         </div>
-        <button class="cart-submit" @click.stop="openCart">鏌ョ湅椁愭</button>
+        <button class="cart-submit" @click.stop="openCart">查看餐桌</button>
       </div>
     </div>
 
-    <!-- ========== 鍘嗗彶璁㈠崟椤电 ========== -->
+    <!-- ========== 历史订单页签 ========== -->
     <div v-if="customerName && currentTab === 'history'" class="history-tab">
       <div class="history-header">
-        <h2>鎴戠殑鍘嗗彶璁㈠崟</h2>
+        <h2>我的历史订单</h2>
         <span class="history-name">{{ customerName }}</span>
       </div>
       <div v-if="orders.length === 0" class="empty-tip">
-        杩樻病鏈夎鍗曪紝鍘荤偣椁愬惂 馃嵈
+        还没有订单，去点餐吧 🍴
       </div>
       <div v-for="order in orders" :key="order.id" class="order-card" @click="toggleOrder(order.id)">
         <div class="order-header">
           <span class="order-date">{{ formatDate(order.created_at) }}</span>
-          <span v-if="order.expected_time" class="expected-badge">鈴?鏈熸湜鏃堕棿锛歿{ formatDateTime(order.expected_time) }}</span>
-          <span class="order-arrow">{{ expandedOrderId === order.id ? '鈻? : '鈻? }}</span>
+          <span v-if="order.expected_time" class="expected-badge">⏰ 期望时间：{{ formatDateTime(order.expected_time) }}</span>
+          <span class="order-arrow">{{ expandedOrderId === order.id ? '▲' : '▼' }}</span>
         </div>
         <div class="order-summary">
-          {{ order.dishes.map(d => d.name).join('銆?) }}
+          {{ order.dishes.map(d => d.name).join('、') }}
         </div>
-        <!-- 灞曞紑璇︽儏 -->
+        <!-- 展开详情 -->
         <div v-if="expandedOrderId === order.id" class="order-detail">
-          <p><strong>鑿滃搧锛?/strong></p>
+          <p><strong>菜品：</strong></p>
           <div v-for="item in order.dishes" :key="item.id" class="detail-dish-item">
             <img v-if="item.image_url" :src="item.image_url" class="detail-dish-img" @error="$event.target.style.display='none'" />
-            <div v-else class="detail-dish-ph">馃嵔锔?/div>
+            <div v-else class="detail-dish-ph">🍽️</div>
             <div class="detail-dish-info">
               <div class="detail-dish-name-row">
                 <span v-if="item.category" :class="['detail-cat-tag', 'cat-' + item.category]">{{ item.category }}</span>
                 <strong>{{ item.name }}</strong>
               </div>
-              <span class="detail-cook-time">鈴?{{ item.cook_time }}鍒嗛挓</span>
-              <span v-if="item.customer_note" class="detail-note">锛堝娉細{{ item.customer_note }}锛?/span>
+              <span class="detail-cook-time">⏱ {{ item.cook_time }}分钟</span>
+              <span v-if="item.customer_note" class="detail-note">（备注：{{ item.customer_note }}）</span>
             </div>
           </div>
-          <p class="detail-total">鍏?{{ order.dishes.length }} 閬撹彍锛岀害 {{ order.total_time }} 鍒嗛挓</p>
-          <p v-if="order.note" class="detail-note-full">璁㈠崟澶囨敞锛歿{ order.note }}</p>
-          <h4>椋熸潗姹囨€?/h4>
+          <p class="detail-total">共 {{ order.dishes.length }} 道菜，约 {{ order.total_time }} 分钟</p>
+          <p v-if="order.note" class="detail-note-full">订单备注：{{ order.note }}</p>
+          <h4>食材汇总</h4>
           <div v-for="(ing, idx) in getIngredients(order)" :key="'i'+idx" class="summary-row">
             <span>{{ ing.name }}</span><span>{{ ing.amount }}</span>
           </div>
-          <h4>璋冩枡姹囨€?/h4>
+          <h4>调料汇总</h4>
           <div v-for="(s, idx) in getSeasonings(order)" :key="'s'+idx" class="summary-row">
             <span>{{ s.name }}</span><span>{{ s.amount }}</span>
           </div>
@@ -138,10 +138,10 @@
       </div>
     </div>
 
-    <!-- 璐墿杞﹀脊绐?-->
+    <!-- 购物车弹窗 -->
     <div v-if="showCart" class="modal-mask" @click.self="showCart = false">
       <div class="modal-box cart-modal">
-        <h2>鎴戠殑椁愭</h2>
+        <h2>我的餐桌</h2>
         <div v-for="item in cartItems" :key="item.id" class="cart-item">
           <img v-if="item.image_url" :src="item.image_url" class="cart-item-img" />
           <div v-else class="cart-item-img-ph"></div>
@@ -150,36 +150,36 @@
               <span v-if="item.category" :class="['detail-cat-tag', 'cat-' + item.category]">{{ item.category }}</span>
               {{ item.name }}
             </h4>
-            <p class="cart-item-time">{{ item.cook_time }}鍒嗛挓</p>
+            <p class="cart-item-time">{{ item.cook_time }}分钟</p>
           </div>
           <input
             v-model="item.customer_note"
-            placeholder="澶囨敞锛堝锛氫笉瑕佽懕濮滐級"
+            placeholder="备注（如：不要葱姜）"
             class="cart-note-input"
           />
-          <button class="remove-btn-circle" @click="removeFromCart(item.id)">鈭?/button>
+          <button class="remove-btn-circle" @click="removeFromCart(item.id)">−</button>
         </div>
 
-        <!-- 鏈熸湜鐢ㄩ鏃堕棿 -->
+        <!-- 期望用餐时间 -->
         <div class="expected-time-section">
-          <label>鏈熸湜鐢ㄩ鏃堕棿 <span class="required">*</span></label>
+          <label>期望用餐时间 <span class="required">*</span></label>
           <input type="datetime-local" v-model="expectedTime" class="time-input" required />
         </div>
 
-        <!-- 璁㈠崟鏁翠綋澶囨敞 -->
+        <!-- 订单整体备注 -->
         <div class="order-note-section">
-          <label>璁㈠崟澶囨敞锛堥€夊～锛?/label>
+          <label>订单备注（选填）</label>
           <textarea
             v-model="orderNote"
-            placeholder="濡傦細浠婂ぉ鏈夎€佷汉锛屽彛鍛虫竻娣′簺"
+            placeholder="如：今天有老人，口味清淡些"
             class="order-note-input"
           ></textarea>
         </div>
 
-        <!-- 椋熸潗姹囨€?-->
+        <!-- 食材汇总 -->
         <div v-if="allIngredients.length > 0" class="summary-section">
           <h3 @click="showIngredients = !showIngredients">
-            椋熸潗姹囨€?{{ showIngredients ? '鈻? : '鈻? }}
+            食材汇总 {{ showIngredients ? '▲' : '▼' }}
           </h3>
           <div v-if="showIngredients" class="summary-list">
             <div v-for="(ing, idx) in allIngredients" :key="idx" class="summary-row">
@@ -189,10 +189,10 @@
           </div>
         </div>
 
-        <!-- 璋冩枡姹囨€?-->
+        <!-- 调料汇总 -->
         <div v-if="allSeasonings.length > 0" class="summary-section">
           <h3 @click="showSeasonings = !showSeasonings">
-            璋冩枡姹囨€?{{ showSeasonings ? '鈻? : '鈻? }}
+            调料汇总 {{ showSeasonings ? '▲' : '▼' }}
           </h3>
           <div v-if="showSeasonings" class="summary-list">
             <div v-for="(s, idx) in allSeasonings" :key="idx" class="summary-row">
@@ -203,88 +203,88 @@
         </div>
 
         <div class="cart-actions">
-          <button class="btn-cancel" @click="showCart = false">缁х画鐐归</button>
-          <button class="btn-submit" @click="submitOrder">纭鎻愪氦</button>
+          <button class="btn-cancel" @click="showCart = false">继续点餐</button>
+          <button class="btn-submit" @click="submitOrder">确认提交</button>
         </div>
       </div>
     </div>
 
-    <!-- 涓嬪崟鎴愬姛寮圭獥 -->
+    <!-- 下单成功弹窗 -->
     <div v-if="showSuccess" class="modal-mask success-mask" @click.self="closeSuccess">
       <div class="modal-box success-modal">
         <div class="success-header">
-          <div class="success-icon">鉁?/div>
-          <h2>涓嬪崟鎴愬姛锛?/h2>
-          <p v-if="successOrder.expected_time">鏈熸湜鐢ㄩ鏃堕棿锛歿{ formatDateTime(successOrder.expected_time) }}</p>
-          <p class="success-tip-text">蹇幓閫氱煡澶у帹鍋氶キ鍚э紒馃嵆</p>
+          <div class="success-icon">✅</div>
+          <h2>下单成功！</h2>
+          <p v-if="successOrder.expected_time">期望用餐时间：{{ formatDateTime(successOrder.expected_time) }}</p>
+          <p class="success-tip-text">快去通知大厨做饭吧！🍳</p>
         </div>
 
         <div class="success-section">
-          <h3>璁㈠崟璇︽儏</h3>
+          <h3>订单详情</h3>
           <div v-for="item in successOrder.dishes" :key="item.id" class="success-dish">
             <img v-if="item.image_url" :src="item.image_url" class="success-dish-img" />
             <div v-else class="success-dish-ph"></div>
             <div class="success-dish-info">
               <h4>{{ item.name }}</h4>
-              <p>{{ item.cook_time }}鍒嗛挓</p>
-              <p v-if="item.customer_note" class="dish-customer-note">澶囨敞锛歿{ item.customer_note }}</p>
+              <p>{{ item.cook_time }}分钟</p>
+              <p v-if="item.customer_note" class="dish-customer-note">备注：{{ item.customer_note }}</p>
             </div>
           </div>
         </div>
 
         <div class="success-section">
-          <h3>鍚堣</h3>
-          <p class="success-total">鍏?{{ successOrder.dishes.length }} 閬撹彍锛岀害 {{ successOrder.total_time }} 鍒嗛挓</p>
+          <h3>合计</h3>
+          <p class="success-total">共 {{ successOrder.dishes.length }} 道菜，约 {{ successOrder.total_time }} 分钟</p>
         </div>
 
         <div v-if="successOrder.note" class="success-section">
-          <h3>璁㈠崟澶囨敞</h3>
+          <h3>订单备注</h3>
           <p class="success-note">{{ successOrder.note }}</p>
         </div>
 
         <div class="success-section">
-          <h3>椋熸潗姹囨€?/h3>
+          <h3>食材汇总</h3>
           <div v-for="(ing, idx) in successIngredients" :key="idx" class="summary-row">
             <span>{{ ing.name }}</span>
             <span>{{ ing.amount }}</span>
           </div>
-          <p v-if="successIngredients.length === 0" class="empty-tip">鏃犻鏉愪俊鎭?/p>
+          <p v-if="successIngredients.length === 0" class="empty-tip">无食材信息</p>
         </div>
 
         <div class="success-section">
-          <h3>璋冩枡姹囨€?/h3>
+          <h3>调料汇总</h3>
           <div v-for="(s, idx) in successSeasonings" :key="idx" class="summary-row">
             <span>{{ s.name }}</span>
             <span>{{ s.amount }}</span>
           </div>
-          <p v-if="successSeasonings.length === 0" class="empty-tip">鏃犺皟鏂欎俊鎭?/p>
+          <p v-if="successSeasonings.length === 0" class="empty-tip">无调料信息</p>
         </div>
 
         <div class="success-actions">
-          <button class="btn-confirm" @click="closeSuccess">纭畾</button>
+          <button class="btn-confirm" @click="closeSuccess">确定</button>
         </div>
       </div>
     </div>
 
-    <!-- 鑿滃搧璇︽儏寮圭獥 -->
+    <!-- 菜品详情弹窗 -->
     <div v-if="showDetail" class="modal-mask" @click.self="showDetail = false">
       <div class="modal-box detail-modal">
         <img v-if="detailDish.image_url" :src="detailDish.image_url" class="detail-img" />
         <div v-else class="detail-img-ph"></div>
         <h2>{{ detailDish.name }}</h2>
-        <p>鍒嗙被锛歿{ detailDish.category }} | {{ detailDish.temperature }}</p>
-        <p>鑰楁椂锛歿{ detailDish.cook_time }}鍒嗛挓</p>
+        <p>分类：{{ detailDish.category }} | {{ detailDish.temperature }}</p>
+        <p>耗时：{{ detailDish.cook_time }}分钟</p>
         <div class="flavor-tags">
           <span v-for="f in detailDish.flavor" :key="f" class="flavor-tag">{{ f }}</span>
         </div>
         <div v-if="detailDish.notes" class="detail-notes">
-          <strong>澶囨敞锛?/strong>{{ detailDish.notes }}
+          <strong>备注：</strong>{{ detailDish.notes }}
         </div>
-        <h4>椋熸潗锛?/h4>
+        <h4>食材：</h4>
         <ul><li v-for="(ing, idx) in detailDish.ingredients" :key="idx">{{ ing.name }} - {{ ing.amount }}</li></ul>
-        <h4>璋冩枡锛?/h4>
+        <h4>调料：</h4>
         <ul><li v-for="(s, idx) in detailDish.seasonings" :key="idx">{{ s.name }} - {{ s.amount }}</li></ul>
-        <button class="btn-close" @click="showDetail = false">鍏抽棴</button>
+        <button class="btn-close" @click="showDetail = false">关闭</button>
       </div>
     </div>
   </div>
@@ -298,14 +298,16 @@ import { useCart } from '../lib/cart'
 const settings = inject('shopSettings')
 const version = ref('v2.0.25')
 
-// Logo 鍥剧墖鍔犺浇澶辫触鏃讹紝娓呴櫎 url 璁╅粯璁ゅ浘鏍囨樉绀?function onLogoError() {
+// Logo 图片加载失败时，清除 url 让默认图标显示
+function onLogoError() {
   settings.value.logo_url = ''
 }
 
-// 椤电鐘舵€?const currentTab = ref('menu')
+// 页签状态
+const currentTab = ref('menu')
 
-const categories = ['鍏ㄩ儴', '鑽よ彍', '绱犺彍', '姹ょ被', '绮夐潰绫?]
-const activeCategory = ref('鍏ㄩ儴')
+const categories = ['全部', '荤菜', '素菜', '汤类', '粉面类']
+const activeCategory = ref('全部')
 const dishes = ref([])
 const customerName = ref('')
 const nameInput = ref('')
@@ -322,7 +324,7 @@ const successOrder = ref({ dishes: [], total_time: 0 })
 const successIngredients = ref([])
 const successSeasonings = ref([])
 
-// 鍘嗗彶璁㈠崟鐩稿叧
+// 历史订单相关
 const orders = ref([])
 const expandedOrderId = ref(null)
 
@@ -342,7 +344,7 @@ onMounted(() => {
     loadDishes()
     loadHistory()
   }
-  // 榛樿鏈熸湜鏃堕棿涓轰粖澶?18:00
+  // 默认期望时间为今天 18:00
   const d = new Date()
   d.setHours(18, 0, 0, 0)
   expectedTime.value = d.toISOString().slice(0, 16)
@@ -357,7 +359,7 @@ async function verifyName() {
     .eq('name', name)
     .single()
   if (error || !data) {
-    nameError.value = '濮撳悕涓嶅瓨鍦紝璇疯仈绯荤鐞嗗憳娣诲姞'
+    nameError.value = '姓名不存在，请联系管理员添加'
     return
   }
   customerName.value = name
@@ -389,9 +391,9 @@ async function loadHistory() {
   }
 }
 
-/** 浠?dishes 琛ㄨˉ鍏ㄨ鍗曡彍鍝佷腑缂哄け鐨?image_url 鍜?category */
+/** 从 dishes 表补全订单菜品中缺失的 image_url 和 category */
 async function enrichOrderDishes(orderList) {
-  // 鏀堕泦鎵€鏈夐渶瑕佽ˉ鍏ㄧ殑 dish id
+  // 收集所有需要补全的 dish id
   const needIds = new Set()
   orderList.forEach(order => {
     ;(order.dishes || []).forEach(d => {
@@ -400,7 +402,8 @@ async function enrichOrderDishes(orderList) {
       }
     })
   })
-  // 鏌ヨ dishes 琛ㄨ幏鍙栧畬鏁存暟鎹?  let dishMap = {}
+  // 查询 dishes 表获取完整数据
+  let dishMap = {}
   if (needIds.size > 0) {
     const { data: dishData } = await supabase
       .from('dishes')
@@ -408,7 +411,8 @@ async function enrichOrderDishes(orderList) {
       .in('id', Array.from(needIds))
     ;(dishData || []).forEach(d => { dishMap[d.id] = d })
   }
-  // 琛ュ叏姣忎釜璁㈠崟鐨勮彍鍝?  return orderList.map(order => ({
+  // 补全每个订单的菜品
+  return orderList.map(order => ({
     ...order,
     dishes: (order.dishes || []).map(d => {
       const fullDish = dishMap[d.id]
@@ -446,7 +450,7 @@ function doLogout() {
 }
 
 const filteredDishes = computed(() => {
-  if (activeCategory.value === '鍏ㄩ儴') return dishes.value
+  if (activeCategory.value === '全部') return dishes.value
   return dishes.value.filter(d => d.category === activeCategory.value)
 })
 
@@ -501,7 +505,7 @@ function getSeasonings(order) {
 async function submitOrder() {
   if (cartItems.value.length === 0) return
   if (!expectedTime.value) {
-    alert('璇烽€夋嫨鏈熸湜鐢ㄩ鏃堕棿')
+    alert('请选择期望用餐时间')
     return
   }
   const orderDishes = cartItems.value.map(item => ({
@@ -522,10 +526,11 @@ async function submitOrder() {
     expected_time: expectedTime.value
   }).select().single()
   if (error) {
-    alert('鎻愪氦澶辫触锛? + error.message)
+    alert('提交失败：' + error.message)
     return
   }
-  // 鍑嗗鎴愬姛椤垫暟鎹?  successOrder.value = {
+  // 准备成功页数据
+  successOrder.value = {
     dishes: orderDishes,
     total_time: getTotalTime(),
     note: orderNote.value.trim() || '',
@@ -560,7 +565,7 @@ async function submitOrder() {
   expectedTime.value = ''
   showCart.value = false
   showSuccess.value = true
-  // 鍒锋柊鍘嗗彶璁板綍
+  // 刷新历史记录
   loadHistory()
 }
 
@@ -570,7 +575,7 @@ function closeSuccess() {
 
 function formatDateTime(dt) {
   const d = new Date(dt)
-  return `${d.getMonth()+1}鏈?{d.getDate()}鏃?${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`
+  return `${d.getMonth()+1}月${d.getDate()}日 ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`
 }
 
 function formatDate(dateStr) {
@@ -601,7 +606,7 @@ function formatDate(dateStr) {
   white-space: nowrap; flex-shrink: 0;
 }
 
-/* 椤电瀵艰埅 */
+/* 页签导航 */
 .tab-nav {
   display: flex; justify-content: space-between; align-items: center;
   padding: 8px 16px; background: #fff;
@@ -620,7 +625,7 @@ function formatDate(dateStr) {
   background: #fff0f0; color: #e55a2b; border: 1px solid #ffcccc; cursor: pointer;
 }
 
-/* 鐧诲綍妗?*/
+/* 登录框 */
 .name-modal {
   position: fixed; inset: 0; background: rgba(0,0,0,0.5);
   display: flex; align-items: center; justify-content: center; z-index: 100;
@@ -650,7 +655,7 @@ function formatDate(dateStr) {
   border-radius: 8px; font-weight: 500; margin-top: 4px;
 }
 
-/* 鍒嗙被瀵艰埅 */
+/* 分类导航 */
 .category-nav {
   display: flex; gap: 8px; padding: 10px 16px; overflow-x: auto;
   background: #fff;
@@ -660,18 +665,18 @@ function formatDate(dateStr) {
   background: var(--bg); color: var(--text); font-size: 13px;
   border: 1.5px solid transparent;
 }
-.cat-btn.cat-鍏ㄩ儴 { color: var(--primary); border-color: rgba(255,107,53,0.45); background: rgba(255,107,53,0.08); }
-.cat-btn.cat-鍏ㄩ儴.active { background: var(--primary); color: #fff; border-color: var(--primary); }
-.cat-btn.cat-鑽よ彍 { color: #e53935; border-color: rgba(229,57,53,0.45); background: rgba(229,57,53,0.08); }
-.cat-btn.cat-鑽よ彍.active { background: #e53935; color: #fff; border-color: #e53935; }
-.cat-btn.cat-绱犺彍 { color: #43a047; border-color: rgba(67,160,71,0.45); background: rgba(67,160,71,0.08); }
-.cat-btn.cat-绱犺彍.active { background: #43a047; color: #fff; border-color: #43a047; }
-.cat-btn.cat-姹ょ被 { color: #1e88e5; border-color: rgba(30,136,229,0.45); background: rgba(30,136,229,0.08); }
-.cat-btn.cat-姹ょ被.active { background: #1e88e5; color: #fff; border-color: #1e88e5; }
-.cat-btn.cat-绮夐潰绫?{ color: #f57c00; border-color: rgba(245,124,0,0.45); background: rgba(245,124,0,0.08); }
-.cat-btn.cat-绮夐潰绫?active { background: #f57c00; color: #fff; border-color: #f57c00; }
+.cat-btn.cat-全部 { color: var(--primary); border-color: rgba(255,107,53,0.45); background: rgba(255,107,53,0.08); }
+.cat-btn.cat-全部.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.cat-btn.cat-荤菜 { color: #e53935; border-color: rgba(229,57,53,0.45); background: rgba(229,57,53,0.08); }
+.cat-btn.cat-荤菜.active { background: #e53935; color: #fff; border-color: #e53935; }
+.cat-btn.cat-素菜 { color: #43a047; border-color: rgba(67,160,71,0.45); background: rgba(67,160,71,0.08); }
+.cat-btn.cat-素菜.active { background: #43a047; color: #fff; border-color: #43a047; }
+.cat-btn.cat-汤类 { color: #1e88e5; border-color: rgba(30,136,229,0.45); background: rgba(30,136,229,0.08); }
+.cat-btn.cat-汤类.active { background: #1e88e5; color: #fff; border-color: #1e88e5; }
+.cat-btn.cat-粉面类 { color: #f57c00; border-color: rgba(245,124,0,0.45); background: rgba(245,124,0,0.08); }
+.cat-btn.cat-粉面类.active { background: #f57c00; color: #fff; border-color: #f57c00; }
 
-/* 鑿滃搧鍗＄墖 */
+/* 菜品卡片 */
 .dish-list { padding: 12px; display: grid; gap: 12px; }
 .dish-card {
   display: flex; gap: 12px; background: #fff; border-radius: 12px;
@@ -687,16 +692,16 @@ function formatDate(dateStr) {
   display: flex; align-items: center; justify-content: center;
   font-size: 11px; color: #aaa;
 }
-/* 鑿滃搧鍒嗙被瑙掓爣锛堝乏涓婅锛?*/
+/* 菜品分类角标（左上角） */
 .cat-tag {
   position: absolute; top: 4px; left: 4px;
   font-size: 10px; padding: 2px 6px; border-radius: 4px;
   color: #fff; font-weight: 500;
 }
-.cat-tag.cat-鑽よ彍 { background: rgba(229,57,53,0.78); }
-.cat-tag.cat-绱犺彍 { background: rgba(67,160,71,0.78); }
-.cat-tag.cat-姹ょ被 { background: rgba(30,136,229,0.78); }
-.cat-tag.cat-绮夐潰绫?{ background: rgba(245,124,0,0.78); }
+.cat-tag.cat-荤菜 { background: rgba(229,57,53,0.78); }
+.cat-tag.cat-素菜 { background: rgba(67,160,71,0.78); }
+.cat-tag.cat-汤类 { background: rgba(30,136,229,0.78); }
+.cat-tag.cat-粉面类 { background: rgba(245,124,0,0.78); }
 .dish-info { flex: 1; min-width: 0; }
 .dish-info h3 { font-size: 15px; margin-bottom: 4px; }
 .flavor-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 4px; }
@@ -707,7 +712,7 @@ function formatDate(dateStr) {
 .cook-time { font-size: 12px; color: var(--text-secondary); }
 .dish-notes { font-size: 11px; color: #e55a2b; margin-top: 2px; }
 
-/* 娣诲姞/宸叉坊鍔犳寜閽?*/
+/* 添加/已添加按钮 */
 .add-btn {
   width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
   background: var(--primary); color: #fff; font-size: 18px; font-weight: bold;
@@ -720,7 +725,7 @@ function formatDate(dateStr) {
 .add-btn:active { transform: scale(0.9); }
 .checked-btn:active { transform: scale(0.9); }
 
-/* 搴曢儴璐墿杞?*/
+/* 底部购物车 */
 .cart-bar {
   position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
   width: 100%; max-width: 480px; background: #fff;
@@ -739,7 +744,7 @@ function formatDate(dateStr) {
   border-radius: 8px; font-weight: 500;
 }
 
-/* 寮圭獥閫氱敤 */
+/* 弹窗通用 */
 .modal-mask {
   position: fixed; inset: 0; background: rgba(0,0,0,0.5);
   display: flex; align-items: flex-end; justify-content: center; z-index: 200;
@@ -749,7 +754,7 @@ function formatDate(dateStr) {
   max-width: 480px; max-height: 85vh; overflow-y: auto; padding: 20px;
 }
 
-/* 鎴愬姛寮圭獥 - 灞呬腑鏄剧ず */
+/* 成功弹窗 - 居中显示 */
 .success-mask {
   align-items: center;
 }
@@ -758,7 +763,7 @@ function formatDate(dateStr) {
   max-height: 80vh !important;
 }
 
-/* 璐墿杞﹀脊绐?*/
+/* 购物车弹窗 */
 .cart-modal h2 { font-size: 16px; margin-bottom: 12px; }
 .cart-item {
   display: flex; align-items: center; gap: 8px; padding: 10px 0;
@@ -816,7 +821,7 @@ function formatDate(dateStr) {
 }
 
 
-/* 涓嬪崟鎴愬姛寮圭獥鏍峰紡 */
+/* 下单成功弹窗样式 */
 .success-header {
   text-align: center; padding: 20px 16px;
   border-bottom: 1px solid var(--border);
@@ -861,7 +866,7 @@ function formatDate(dateStr) {
 }
 .empty-tip { font-size: 12px; color: var(--text-secondary); }
 
-/* 鍘嗗彶璁㈠崟椤电 */
+/* 历史订单页签 */
 .history-tab { padding: 12px; }
 .history-header {
   display: flex; justify-content: space-between; align-items: center;
@@ -903,10 +908,10 @@ function formatDate(dateStr) {
   font-size: 10px; padding: 2px 7px; border-radius: 4px;
   font-weight: 500; color: #fff; flex-shrink: 0;
 }
-.detail-cat-tag.cat-鑽よ彍 { background: rgba(229,57,53,0.82); }
-.detail-cat-tag.cat-绱犺彍 { background: rgba(67,160,71,0.82); }
-.detail-cat-tag.cat-姹ょ被 { background: rgba(30,136,229,0.82); }
-.detail-cat-tag.cat-绮夐潰绫?{ background: rgba(245,124,0,0.82); }
+.detail-cat-tag.cat-荤菜 { background: rgba(229,57,53,0.82); }
+.detail-cat-tag.cat-素菜 { background: rgba(67,160,71,0.82); }
+.detail-cat-tag.cat-汤类 { background: rgba(30,136,229,0.82); }
+.detail-cat-tag.cat-粉面类 { background: rgba(245,124,0,0.82); }
 .detail-dish-img { width: 52px; height: 52px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
 .detail-dish-ph {
   width: 52px; height: 52px; border-radius: 8px; background: linear-gradient(135deg,#f5f5f0,#e8e8e0);
@@ -920,7 +925,7 @@ function formatDate(dateStr) {
 .detail-total { font-weight: 500; margin-top: 6px; }
 .detail-note-full { font-size: 12px; color: var(--text-secondary); margin-top: 6px; background: #f9f9f9; padding: 6px; border-radius: 6px; }
 
-/* 鑿滃搧璇︽儏寮圭獥 */
+/* 菜品详情弹窗 */
 .detail-modal { border-radius: 16px; max-height: 85vh; overflow-y: auto; margin: 20px auto; width: 90%; max-width: 420px; }
 .detail-img { width: 100%; height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 12px; }
 .detail-img-ph { width: 100%; height: 200px; background: #f0f0f0; border-radius: 8px; margin-bottom: 12px; }

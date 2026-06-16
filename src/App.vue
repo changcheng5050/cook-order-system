@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div id="app-root">
     <div class="main-content">
       <router-view />
@@ -13,7 +13,7 @@ import { supabase } from './lib/supabase'
 const version = ref('v2.0.25')
 
 const shopSettings = ref({
-  shop_name: '闃挎椇灏忓帹鎴?,
+  shop_name: '阿旺小厨房',
   logo_url: ''
 })
 
@@ -21,10 +21,11 @@ async function loadSettings() {
   const { data } = await supabase.from('settings').select('*').single()
   if (data) {
     shopSettings.value = {
-      shop_name: data.shop_name || '闃挎椇灏忓帹鎴?,
+      shop_name: data.shop_name || '阿旺小厨房',
       logo_url: data.logo_url || ''
     }
-    // 鍔ㄦ€佽缃祻瑙堝櫒鍥炬爣鍜屾爣棰?    if (data.logo_url) {
+    // 动态设置浏览器图标和标题
+    if (data.logo_url) {
       const favicon = document.getElementById('dynamic-favicon')
       const appleIcon = document.getElementById('dynamic-apple-icon')
       if (favicon) favicon.href = data.logo_url

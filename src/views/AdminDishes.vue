@@ -1,40 +1,40 @@
-﻿<template>
+<template>
   <div class="admin-page">
     <header class="admin-header">
-      <h1>鑿滃搧绠＄悊</h1>
+      <h1>菜品管理</h1>
       <div class="header-actions">
-        <button class="btn-nav" @click="$router.push('/admin/customers')">瀹㈡埛</button>
-        <button class="btn-nav" @click="$router.push('/admin/orders')">璁㈠崟</button>
-        <button class="btn-settings" @click="$router.push('/admin/settings')">璁剧疆</button>
-        <button class="btn-logout" @click="logout">閫€鍑?/button>
+        <button class="btn-nav" @click="$router.push('/admin/customers')">客户</button>
+        <button class="btn-nav" @click="$router.push('/admin/orders')">订单</button>
+        <button class="btn-settings" @click="$router.push('/admin/settings')">设置</button>
+        <button class="btn-logout" @click="logout">退出</button>
         <span class="version-badge">v2.0.25</span>
       </div>
     </header>
 
-    <!-- 鏂板鑿滃搧鎸夐挳 + 鎼滅储 + 鎺掑簭 -->
+    <!-- 新增菜品按钮 + 搜索 + 排序 -->
     <div class="toolbar">
-      <button class="btn-add" @click="openAddModal">+ 鏂板鑿滃搧</button>
-      <input v-model="searchKey" placeholder="馃攳 鎼滅储鑿滃悕..." class="search-input" />
+      <button class="btn-add" @click="openAddModal">+ 新增菜品</button>
+      <input v-model="searchKey" placeholder="🔍 搜索菜名..." class="search-input" />
       <select v-model="filterCategory" class="filter-select">
-        <option value="">鍏ㄩ儴鍒嗙被</option>
+        <option value="">全部分类</option>
         <option v-for="c in categoryOptions" :key="c" :value="c">{{ c }}</option>
       </select>
       <select v-model="filterActive" class="filter-select">
-        <option value="all">鍏ㄩ儴</option>
-        <option value="active">涓婃灦涓?/option>
-        <option value="inactive">宸蹭笅鏋?/option>
+        <option value="all">全部</option>
+        <option value="active">上架中</option>
+        <option value="inactive">已下架</option>
       </select>
-      <button v-if="!sortMode" class="btn-sort" @click="enterSortMode">鎺掑簭</button>
-      <button v-else class="btn-save-sort" @click="saveSort">淇濆瓨鎺掑簭</button>
-      <button v-if="sortMode" class="btn-cancel-sort" @click="cancelSort">鍙栨秷</button>
+      <button v-if="!sortMode" class="btn-sort" @click="enterSortMode">排序</button>
+      <button v-else class="btn-save-sort" @click="saveSort">保存排序</button>
+      <button v-if="sortMode" class="btn-cancel-sort" @click="cancelSort">取消</button>
     </div>
 
-    <!-- 鎺掑簭妯″紡鎻愮ず -->
+    <!-- 排序模式提示 -->
     <div v-if="sortMode" class="sort-tip">
-      馃挕 鎺掑簭妯″紡锛氬湪杈撳叆妗嗗～鍐欏簭鍙凤紙濡?1, 2, 3...锛夛紝鎸夊洖杞︾‘璁わ紝瀹屾垚鍚庣偣"淇濆瓨鎺掑簭"
+      💡 排序模式：在输入框填写序号（如 1, 2, 3...），按回车确认，完成后点"保存排序"
     </div>
 
-    <!-- 鑿滃搧鍒楄〃 -->
+    <!-- 菜品列表 -->
     <div class="dish-admin-list" :class="{ 'sort-mode': sortMode }">
       <div
         v-for="(dish, idx) in filteredList"
@@ -49,17 +49,17 @@
         :style="dragIdx === idx ? dragCardStyle : {}"
       >
         <img v-if="dish.image_url" :src="dish.image_url" class="admin-dish-img" />
-        <div v-else class="admin-img-placeholder">鏃犲浘</div>
+        <div v-else class="admin-img-placeholder">无图</div>
         <div class="admin-dish-info">
           <h3>{{ dish.name }}</h3>
-          <p>{{ dish.category }} | {{ dish.temperature }} | {{ dish.cook_time }}鍒嗛挓</p>
+          <p>{{ dish.category }} | {{ dish.temperature }} | {{ dish.cook_time }}分钟</p>
           <p class="flavor-tags">
             <span v-for="f in dish.flavor" :key="f" class="tag">{{ f }}</span>
           </p>
-          <p v-if="dish.notes" class="dish-note-text">馃摑 {{ dish.notes }}</p>
+          <p v-if="dish.notes" class="dish-note-text">📝 {{ dish.notes }}</p>
         </div>
         <div class="admin-dish-actions">
-          <!-- 鎺掑簭妯″紡锛氭樉绀哄簭鍙疯緭鍏ユ -->
+          <!-- 排序模式：显示序号输入框 -->
           <template v-if="sortMode">
             <input
               type="number"
@@ -72,51 +72,51 @@
               :max="filteredList.length"
             />
           </template>
-          <!-- 姝ｅ父妯″紡锛氭樉绀虹紪杈?涓婃灦/鍒犻櫎 -->
+          <!-- 正常模式：显示编辑/上架/删除 -->
           <template v-else>
-            <button class="btn-edit" @click="openEditModal(dish)">缂栬緫</button>
-            <button :class="dish.is_active ? 'btn-unlist' : 'btn-list'" @click="toggleActive(dish)">{{ dish.is_active ? '涓嬫灦' : '涓婃灦' }}</button>
-            <button class="btn-del" @click="deleteDish(dish.id)">鍒犻櫎</button>
+            <button class="btn-edit" @click="openEditModal(dish)">编辑</button>
+            <button :class="dish.is_active ? 'btn-unlist' : 'btn-list'" @click="toggleActive(dish)">{{ dish.is_active ? '下架' : '上架' }}</button>
+            <button class="btn-del" @click="deleteDish(dish.id)">删除</button>
           </template>
         </div>
       </div>
-      <div v-if="filteredList.length === 0" class="empty-tip">鏆傛棤鑿滃搧</div>
+      <div v-if="filteredList.length === 0" class="empty-tip">暂无菜品</div>
     </div>
 
-    <!-- 鏂板/缂栬緫寮圭獥 -->
+    <!-- 新增/编辑弹窗 -->
     <div v-if="showModal" class="modal-mask" @click.self="closeModal">
       <div class="modal-box admin-modal">
-        <h2>{{ isEdit ? '缂栬緫鑿滃搧' : '鏂板鑿滃搧' }}</h2>
+        <h2>{{ isEdit ? '编辑菜品' : '新增菜品' }}</h2>
 
-        <label>鑿滃悕 *</label>
-        <input v-model="form.name" placeholder="璇疯緭鍏ヨ彍鍚? />
+        <label>菜名 *</label>
+        <input v-model="form.name" placeholder="请输入菜名" />
 
-        <label>鍒嗙被 *</label>
+        <label>分类 *</label>
         <select v-model="form.category">
           <option v-for="c in categoryOptions" :key="c" :value="c">{{ c }}</option>
         </select>
 
-        <label>娓╁害 *</label>
+        <label>温度 *</label>
         <select v-model="form.temperature">
-          <option value="鐑彍">鐑彍</option>
-          <option value="鍑夎彍">鍑夎彍</option>
+          <option value="热菜">热菜</option>
+          <option value="凉菜">凉菜</option>
         </select>
 
-        <label>鑰楁椂锛堝垎閽燂級*</label>
+        <label>耗时（分钟）*</label>
         <input v-model.number="form.cook_time" type="number" min="1" />
 
-        <label>鍙ｅ懗鏍囩</label>
+        <label>口味标签</label>
         <div class="tag-input-row">
-          <input v-model="tagInput" placeholder="杈撳叆鏍囩鍚庡洖杞︽垨鐐瑰嚮娣诲姞" @keyup.enter="addTag" />
-          <button type="button" class="btn-add-tag" @click="addTag">+ 娣诲姞</button>
+          <input v-model="tagInput" placeholder="输入标签后回车或点击添加" @keyup.enter="addTag" />
+          <button type="button" class="btn-add-tag" @click="addTag">+ 添加</button>
         </div>
         <div class="tags-edit">
           <span v-for="(f, idx) in form.flavor" :key="idx" class="tag">
-            {{ f }} <span @click="form.flavor.splice(idx, 1)">鉁?/span>
+            {{ f }} <span @click="form.flavor.splice(idx, 1)">✕</span>
           </span>
         </div>
 
-        <label>椋熸潗 *锛堝悕绉板拰鐢ㄩ噺锛屽彲鎺掑簭锛?/label>
+        <label>食材 *（名称和用量，可排序）</label>
         <div v-for="(ing, idx) in form.ingredients" :key="'ing-'+idx"
           class="kv-row reorder-row"
           draggable="true"
@@ -124,16 +124,16 @@
           @dragover.prevent="onDragOver(idx, 'ing')"
           @drop="onDrop(idx, 'ing')"
         >
-          <span class="drag-handle" title="鎷栨嫿鎺掑簭">鉅?/span>
-          <button class="btn-move" @click="moveRow('ing', idx, -1)" :disabled="idx === 0" title="涓婄Щ">鈫?/button>
-          <button class="btn-move" @click="moveRow('ing', idx, 1)" :disabled="idx === form.ingredients.length - 1" title="涓嬬Щ">鈫?/button>
-          <input v-model="ing.name" placeholder="椋熸潗鍚? list="ingredient-list" />
-          <input v-model="ing.amount" placeholder="鐢ㄩ噺" />
-          <button @click="form.ingredients.splice(idx, 1)">鉁?/button>
+          <span class="drag-handle" title="拖拽排序">⠿</span>
+          <button class="btn-move" @click="moveRow('ing', idx, -1)" :disabled="idx === 0" title="上移">↑</button>
+          <button class="btn-move" @click="moveRow('ing', idx, 1)" :disabled="idx === form.ingredients.length - 1" title="下移">↓</button>
+          <input v-model="ing.name" placeholder="食材名" list="ingredient-list" />
+          <input v-model="ing.amount" placeholder="用量" />
+          <button @click="form.ingredients.splice(idx, 1)">✕</button>
         </div>
-        <button class="btn-add-row" @click="form.ingredients.unshift({name:'',amount:'閫傞噺'})">+ 娣诲姞椋熸潗</button>
+        <button class="btn-add-row" @click="form.ingredients.unshift({name:'',amount:'适量'})">+ 添加食材</button>
 
-        <label>璋冩枡 *锛堝悕绉板拰鐢ㄩ噺锛屽彲鎺掑簭锛?/label>
+        <label>调料 *（名称和用量，可排序）</label>
         <div v-for="(s, idx) in form.seasonings" :key="'s-'+idx"
           class="kv-row reorder-row"
           draggable="true"
@@ -141,38 +141,38 @@
           @dragover.prevent="onDragOver(idx, 'sea')"
           @drop="onDrop(idx, 'sea')"
         >
-          <span class="drag-handle" title="鎷栨嫿鎺掑簭">鉅?/span>
-          <button class="btn-move" @click="moveRow('sea', idx, -1)" :disabled="idx === 0" title="涓婄Щ">鈫?/button>
-          <button class="btn-move" @click="moveRow('sea', idx, 1)" :disabled="idx === form.seasonings.length - 1" title="涓嬬Щ">鈫?/button>
-          <input v-model="s.name" placeholder="璋冩枡鍚? list="seasoning-list" />
-          <input v-model="s.amount" placeholder="鐢ㄩ噺" />
-          <button @click="form.seasonings.splice(idx, 1)">鉁?/button>
+          <span class="drag-handle" title="拖拽排序">⠿</span>
+          <button class="btn-move" @click="moveRow('sea', idx, -1)" :disabled="idx === 0" title="上移">↑</button>
+          <button class="btn-move" @click="moveRow('sea', idx, 1)" :disabled="idx === form.seasonings.length - 1" title="下移">↓</button>
+          <input v-model="s.name" placeholder="调料名" list="seasoning-list" />
+          <input v-model="s.amount" placeholder="用量" />
+          <button @click="form.seasonings.splice(idx, 1)">✕</button>
         </div>
-        <button class="btn-add-row" @click="form.seasonings.unshift({name:'',amount:'閫傞噺'})">+ 娣诲姞璋冩枡</button>
+        <button class="btn-add-row" @click="form.seasonings.unshift({name:'',amount:'适量'})">+ 添加调料</button>
 
-        <label>澶囨敞</label>
-        <textarea v-model="form.notes" placeholder="濡傦細鍚懕濮滆挏锛屽繉鍙ｈ鎻愬墠鍛婄煡"></textarea>
+        <label>备注</label>
+        <textarea v-model="form.notes" placeholder="如：含葱姜蒜，忌口请提前告知"></textarea>
 
-        <label>鑿滃搧鍥剧墖锛堝彲閫夎鍓級</label>
+        <label>菜品图片（可选裁剪）</label>
         <input type="file" accept="image/*" @change="onImageSelected" :disabled="uploading" />
         <div v-if="form.image_url && !showCropper" class="preview-img-wrap">
           <img :src="form.image_url" class="preview-img" />
-          <button @click="form.image_url = ''; rawImageUrl = ''">绉婚櫎鍥剧墖</button>
+          <button @click="form.image_url = ''; rawImageUrl = ''">移除图片</button>
         </div>
-        <p v-if="uploading" class="upload-tip">涓婁紶涓?..</p>
+        <p v-if="uploading" class="upload-tip">上传中...</p>
 
         <div class="modal-actions">
-          <button @click="closeModal">鍙栨秷</button>
-          <button class="btn-save" @click="saveDish">{{ isEdit ? '淇濆瓨淇敼' : '鏂板' }}</button>
+          <button @click="closeModal">取消</button>
+          <button class="btn-save" @click="saveDish">{{ isEdit ? '保存修改' : '新增' }}</button>
         </div>
       </div>
     </div>
 
-    <!-- 鍥剧墖瑁佸壀寮圭獥锛堝彲閫夛紝鍙烦杩囷級 -->
+    <!-- 图片裁剪弹窗（可选，可跳过） -->
     <div v-if="showCropper" class="modal-mask" @click.self="cancelCrop">
       <div class="modal-box cropper-modal">
-        <h3>瑁佸壀鍥剧墖锛堝彲閫夛級</h3>
-        <p class="crop-hint">婊氳疆缂╂斁 路 鎷栧姩瑁佸壀妗嗙Щ鍔?路 鎷栬璋冩暣澶у皬</p>
+        <h3>裁剪图片（可选）</h3>
+        <p class="crop-hint">滚轮缩放 · 拖动裁剪框移动 · 拖角调整大小</p>
         <div
           ref="cropContainerRef"
           class="crop-canvas-wrap"
@@ -183,7 +183,7 @@
           @mouseleave="onCropMouseUp"
         >
           <canvas ref="cropCanvasRef" class="crop-canvas"></canvas>
-          <!-- 瑁佸壀妗?-->
+          <!-- 裁剪框 -->
           <div
             class="crop-box"
             :style="{ left: cropBox.x + 'px', top: cropBox.y + 'px', width: cropBox.w + 'px', height: cropBox.h + 'px' }"
@@ -196,19 +196,19 @@
           </div>
         </div>
         <div class="crop-toolbar">
-          <button @click="zoomCrop(0.88)">缂╁皬</button>
-          <button @click="zoomCrop(1.12)">鏀惧ぇ</button>
-          <span class="crop-size-info">瑁佸壀杈撳嚭锛歿{ cropOutW }} 脳 {{ cropOutH }} px锛堝師鍥惧昂瀵革級</span>
+          <button @click="zoomCrop(0.88)">缩小</button>
+          <button @click="zoomCrop(1.12)">放大</button>
+          <span class="crop-size-info">裁剪输出：{{ cropOutW }} × {{ cropOutH }} px（原图尺寸）</span>
         </div>
         <div class="modal-actions">
-          <button @click="cancelCrop">鍙栨秷</button>
-          <button class="btn-skip-crop" @click="skipCrop">璺宠繃瑁佸壀锛岀洿鎺ヤ笂浼?/button>
-          <button class="btn-save" @click="cropAndUpload">纭瑁佸壀骞朵笂浼?/button>
+          <button @click="cancelCrop">取消</button>
+          <button class="btn-skip-crop" @click="skipCrop">跳过裁剪，直接上传</button>
+          <button class="btn-save" @click="cropAndUpload">确认裁剪并上传</button>
         </div>
       </div>
     </div>
 
-    <!-- datalist锛氶鏉?璋冩枡鑱旀兂 -->
+    <!-- datalist：食材/调料联想 -->
     <datalist id="ingredient-list">
       <option v-for="item in ingredientSuggestions" :key="item" :value="item" />
     </datalist>
@@ -233,14 +233,17 @@ const filterActive = ref('all')
 const searchKey = ref('')
 const tagInput = ref('')
 const uploading = ref(false)
-const sortMode = ref(false)  // 鎺掑簭妯″紡
-const dragIdx = ref(-1)  // 姝ｅ湪鎷栨嫿鐨勫崱鐗囩储寮?const dragOverIdx = ref(-1)  // 鎷栨嫿鎮仠鐨勫崱鐗囩储寮?const dragCardStyle = { opacity: '0.5' }  // 鎷栨嫿鏃跺崱鐗囧彉娣?
-const categoryOptions = ['鑽よ彍', '绱犺彍', '姹ょ被', '绮夐潰绫?, '涓婚']
+const sortMode = ref(false)  // 排序模式
+const dragIdx = ref(-1)  // 正在拖拽的卡片索引
+const dragOverIdx = ref(-1)  // 拖拽悬停的卡片索引
+const dragCardStyle = { opacity: '0.5' }  // 拖拽时卡片变淡
+
+const categoryOptions = ['荤菜', '素菜', '汤类', '粉面类', '主食']
 
 const form = ref({
   name: '',
-  category: '鑽よ彍',
-  temperature: '鐑彍',
+  category: '荤菜',
+  temperature: '热菜',
   cook_time: 0,
   flavor: [],
   ingredients: [],
@@ -250,11 +253,11 @@ const form = ref({
   is_active: true
 })
 
-// 椋熸潗/璋冩枡鑱旀兂
+// 食材/调料联想
 const ingredientSuggestions = ref([])
 const seasoningSuggestions = ref([])
 
-// 鍥剧墖瑁佸壀
+// 图片裁剪
 const showCropper = ref(false)
 const rawImageUrl = ref('')
 const cropCanvasRef = ref(null)
@@ -263,7 +266,8 @@ let cropImageObj = null
 let cropImageNaturalW = 0
 let cropImageNaturalH = 0
 
-// 瑁佸壀妗嗙姸鎬?const cropBox = ref({ x: 20, y: 20, w: 200, h: 150 })
+// 裁剪框状态
+const cropBox = ref({ x: 20, y: 20, w: 200, h: 150 })
 const cropOutW = ref(0)
 const cropOutH = ref(0)
 let cropDrag = null
@@ -274,7 +278,7 @@ let pendingFile = null
 let containerW = 400
 let containerH = 320
 
-// 鎷栨嫿鎺掑簭
+// 拖拽排序
 let dragState = { idx: -1, type: '' }
 
 const filteredList = computed(() => {
@@ -305,7 +309,7 @@ async function loadDishes() {
   dishes.value = data || []
 }
 
-// 浠庢暟鎹簱鍔犺浇鎵€鏈夌敤杩囩殑椋熸潗/璋冩枡鍚嶇О
+// 从数据库加载所有用过的食材/调料名称
 async function loadSuggestions() {
   const { data } = await supabase.from('dishes').select('ingredients, seasonings')
   if (!data) return
@@ -319,7 +323,7 @@ async function loadSuggestions() {
   seasoningSuggestions.value = Array.from(seaSet)
 }
 
-// ========== 涓婁笅绉诲姩鎺掑簭锛堟墜鏈?鐢佃剳閮借兘鐢級==========
+// ========== 上下移动排序（手机/电脑都能用）==========
 function moveRow(type, idx, dir) {
   const list = type === 'ing' ? form.value.ingredients : form.value.seasonings
   const newIdx = idx + dir
@@ -332,21 +336,21 @@ function openAddModal() {
   isEdit.value = false
   editingId.value = null
   form.value = {
-    name: '', category: '鑽よ彍', temperature: '鐑彍', cook_time: 0,
+    name: '', category: '荤菜', temperature: '热菜', cook_time: 0,
     flavor: [],
     ingredients: [
-      { name: '钁?, amount: '閫傞噺' },
-      { name: '濮?, amount: '閫傞噺' },
-      { name: '钂?, amount: '閫傞噺' },
-      { name: '棣欒彍', amount: '閫傞噺' }
+      { name: '葱', amount: '适量' },
+      { name: '姜', amount: '适量' },
+      { name: '蒜', amount: '适量' },
+      { name: '香菜', amount: '适量' }
     ],
     seasonings: [
-      { name: '鐢熸娊', amount: '閫傞噺' },
-      { name: '鑰佹娊', amount: '閫傞噺' },
-      { name: '閰辨补', amount: '閫傞噺' },
-      { name: '绯?, amount: '閫傞噺' },
-      { name: '鐩?, amount: '閫傞噺' },
-      { name: '閱?, amount: '閫傞噺' }
+      { name: '生抽', amount: '适量' },
+      { name: '老抽', amount: '适量' },
+      { name: '酱油', amount: '适量' },
+      { name: '糖', amount: '适量' },
+      { name: '盐', amount: '适量' },
+      { name: '醋', amount: '适量' }
     ],
     notes: '', image_url: '', is_active: true
   }
@@ -363,8 +367,8 @@ function openEditModal(dish) {
     temperature: dish.temperature,
     cook_time: dish.cook_time,
     flavor: [...(dish.flavor || [])],
-    ingredients: (dish.ingredients || []).length ? [...dish.ingredients] : [{ name: '', amount: '閫傞噺' }],
-    seasonings: (dish.seasonings || []).length ? [...dish.seasonings] : [{ name: '', amount: '閫傞噺' }],
+    ingredients: (dish.ingredients || []).length ? [...dish.ingredients] : [{ name: '', amount: '适量' }],
+    seasonings: (dish.seasonings || []).length ? [...dish.seasonings] : [{ name: '', amount: '适量' }],
     notes: dish.notes || '',
     image_url: dish.image_url || '',
     is_active: dish.is_active
@@ -379,7 +383,7 @@ function addTag() {
   tagInput.value = ''
 }
 
-// ========== 鎷栨嫿鎺掑簭 ==========
+// ========== 拖拽排序 ==========
 function onDragStart(idx, type) {
   dragState = { idx, type }
 }
@@ -397,7 +401,7 @@ function onDrop(idx, type) {
   dragState = { idx: -1, type: '' }
 }
 
-// ========== 鍥剧墖閫夋嫨 鈫?瑁佸壀锛堝彲閫夛級==========
+// ========== 图片选择 → 裁剪（可选）==========
 function onImageSelected(e) {
   const file = e.target.files[0]
   if (!file) return
@@ -424,13 +428,14 @@ function initCrop() {
     containerW = wrap.clientWidth || 380
     containerH = 300
 
-    // 鍥剧墖閫傚簲瀹瑰櫒锛堟樉绀虹敤锛?    let scale = containerW / cropImageNaturalW
+    // 图片适应容器（显示用）
+    let scale = containerW / cropImageNaturalW
     if (cropImageNaturalH * scale > containerH) scale = containerH / cropImageNaturalH
     imgScale = scale
     imgOffsetX = (containerW - cropImageNaturalW * scale) / 2
     imgOffsetY = (containerH - cropImageNaturalH * scale) / 2
 
-    // 瑁佸壀妗嗗垵濮嬪崰鏄剧ず鍥剧墖鐨?85%
+    // 裁剪框初始占显示图片的 85%
     let cw = cropImageNaturalW * scale * 0.85
     let ch = cropImageNaturalH * scale * 0.85
     if (cw > containerW - 40) cw = containerW - 40
@@ -470,7 +475,7 @@ function updateCropOutSize() {
   cropOutH.value = oh
 }
 
-// 缂╂斁
+// 缩放
 function zoomCrop(factor) {
   imgScale *= factor
   if (imgScale < 0.1) imgScale = 0.1
@@ -484,7 +489,8 @@ function onCropWheel(e) {
   zoomCrop(e.deltaY > 0 ? 0.92 : 1.08)
 }
 
-// 鎷栧姩瑁佸壀妗?function onCropMouseDown(e) {
+// 拖动裁剪框
+function onCropMouseDown(e) {
   const rect = cropContainerRef.value.getBoundingClientRect()
   const mx = e.clientX - rect.left
   const my = e.clientY - rect.top
@@ -556,18 +562,18 @@ function cancelCrop() {
   cropImageObj = null
 }
 
-// ========== 璺宠繃瑁佸壀锛岀洿鎺ュ帇缂╀笂浼犲師鍥?==========
+// ========== 跳过裁剪，直接压缩上传原图 ==========
 async function skipCrop() {
   if (!pendingFile) {
-    alert('鏈娴嬪埌寰呬笂浼犲浘鐗囷紝璇烽噸鏂伴€夋嫨鍥剧墖')
+    alert('未检测到待上传图片，请重新选择图片')
     showCropper.value = false
     return
   }
   uploading.value = true
   try {
     const compressedBlob = await compressImage(pendingFile)
-    if (!compressedBlob) throw new Error('鍥剧墖鍘嬬缉澶辫触')
-    // 杞垚 File 瀵硅薄鍐嶄笂浼狅紙鏇寸ǔ濡ワ級
+    if (!compressedBlob) throw new Error('图片压缩失败')
+    // 转成 File 对象再上传（更稳妥）
     const ext = pendingFile.name.split('.').pop() || 'jpg'
     const fileName = `dish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
     const compressedFile = new File([compressedBlob], fileName, { type: compressedBlob.type || 'image/jpeg' })
@@ -576,11 +582,11 @@ async function skipCrop() {
       const { data: { publicUrl } } = supabase.storage.from('dish-images').getPublicUrl(fileName)
       form.value.image_url = publicUrl
     } else {
-      alert('涓婁紶澶辫触锛? + error.message)
+      alert('上传失败：' + error.message)
     }
   } catch (err) {
-    console.error('skipCrop 鍑洪敊锛?, err)
-    alert('涓婁紶澶辫触锛? + (err.message || err))
+    console.error('skipCrop 出错：', err)
+    alert('上传失败：' + (err.message || err))
   } finally {
     uploading.value = false
     showCropper.value = false
@@ -589,7 +595,7 @@ async function skipCrop() {
   }
 }
 
-// ========== 纭瑁佸壀 鈫?鍘熷浘鍧愭爣瑁佸壀 鈫?涓€娆℃€у帇缂╀笂浼?==========
+// ========== 确认裁剪 → 原图坐标裁剪 → 一次性压缩上传 ==========
 async function cropAndUpload() {
   if (!cropImageObj) return
   uploading.value = true
@@ -609,7 +615,7 @@ async function cropAndUpload() {
     tmpCtx.drawImage(cropImageObj, sx, sy, sw, sh, 0, 0, outW, outH)
 
     tmpCanvas.toBlob(async (blob) => {
-      if (!blob) { alert('瑁佸壀澶辫触'); uploading.value = false; return }
+      if (!blob) { alert('裁剪失败'); uploading.value = false; return }
       try {
         const ext = pendingFile ? (pendingFile.name.split('.').pop() || 'jpg') : 'jpg'
         const fileName = `dish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
@@ -619,11 +625,11 @@ async function cropAndUpload() {
           const { data: { publicUrl } } = supabase.storage.from('dish-images').getPublicUrl(fileName)
           form.value.image_url = publicUrl
         } else {
-          alert('涓婁紶澶辫触锛? + error.message)
+          alert('上传失败：' + error.message)
         }
       } catch (err) {
-        console.error('cropAndUpload 涓婁紶鍑洪敊锛?, err)
-        alert('涓婁紶澶辫触锛? + (err.message || err))
+        console.error('cropAndUpload 上传出错：', err)
+        alert('上传失败：' + (err.message || err))
       }
       uploading.value = false
       showCropper.value = false
@@ -631,13 +637,14 @@ async function cropAndUpload() {
       pendingFile = null
     }, 'image/jpeg', 0.85)
   } catch (err) {
-    console.error('cropAndUpload 鍑洪敊锛?, err)
-    alert('瑁佸壀鍑洪敊锛? + (err.message || err))
+    console.error('cropAndUpload 出错：', err)
+    alert('裁剪出错：' + (err.message || err))
     uploading.value = false
   }
 }
 
-// 鍘嬬缉鍘熷浘锛堣烦杩囪鍓椂浣跨敤锛屾渶澶у搴?600px锛岃川閲?.85锛?function compressImage(file) {
+// 压缩原图（跳过裁剪时使用，最大宽度1600px，质量0.85）
+function compressImage(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = (e) => {
@@ -664,8 +671,8 @@ async function cropAndUpload() {
 }
 
 async function saveDish() {
-  if (!form.value.name) return alert('璇疯緭鍏ヨ彍鍚?)
-  if (!form.value.cook_time) return alert('璇疯緭鍏ヨ€楁椂')
+  if (!form.value.name) return alert('请输入菜名')
+  if (!form.value.cook_time) return alert('请输入耗时')
   const payload = {
     name: form.value.name,
     category: form.value.category,
@@ -681,7 +688,7 @@ async function saveDish() {
   if (isEdit.value) {
     ;({ error } = await supabase.from('dishes').update(payload).eq('id', editingId.value))
   } else {
-    // 鏂板鑿滃搧锛歴ort_order 璁句负褰撳墠鏈€澶у€?+ 1锛堟帓鍒版渶鍚庯級
+    // 新增菜品：sort_order 设为当前最大值 + 1（排到最后）
     const { data: maxData } = await supabase
       .from('dishes')
       .select('sort_order')
@@ -692,7 +699,7 @@ async function saveDish() {
     ;({ error } = await supabase.from('dishes').insert(payload))
   }
   if (error) {
-    alert('淇濆瓨澶辫触锛? + error.message)
+    alert('保存失败：' + error.message)
   } else {
     closeModal()
     loadDishes()
@@ -706,12 +713,12 @@ async function toggleActive(dish) {
 }
 
 async function deleteDish(id) {
-  if (!confirm('纭畾鍒犻櫎杩欓亾鑿滐紵')) return
+  if (!confirm('确定删除这道菜？')) return
   await supabase.from('dishes').delete().eq('id', id)
   loadDishes()
 }
 
-// ========== 鎷栨嫿鎺掑簭锛堟嫋鍔ㄦ暣涓崱鐗囷級==========
+// ========== 拖拽排序（拖动整个卡片）==========
 function onDragStartCard(e, idx) {
   if (!sortMode.value) return
   dragIdx.value = idx
@@ -732,19 +739,19 @@ function onDropCard(e, idx) {
   const to = idx
   if (from < 0 || from === to) return
   
-  // 鍦?dishes.value 涓壘鍒拌繖涓や釜鑿滃搧锛屼氦鎹㈠畠浠殑 sort_order
+  // 在 dishes.value 中找到这两个菜品，交换它们的 sort_order
   const dishA = filteredList.value[from]
   const dishB = filteredList.value[to]
   const posA = dishes.value.findIndex(d => d.id === dishA.id)
   const posB = dishes.value.findIndex(d => d.id === dishB.id)
   if (posA < 0 || posB < 0) return
     
-  // 浜ゆ崲 sort_order
+  // 交换 sort_order
   const tmp = dishes.value[posA].sort_order
   dishes.value[posA].sort_order = dishes.value[posB].sort_order
   dishes.value[posB].sort_order = tmp
     
-  // 閲嶆柊鎺掑簭 dishes锛堣鏄剧ず璺熺潃鍙橈級
+  // 重新排序 dishes（让显示跟着变）
   dishes.value.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
     
   dragIdx.value = -1
@@ -756,9 +763,9 @@ function onDragEndCard() {
   dragOverIdx.value = -1
 }
 
-// ========== 杈撳叆搴忓彿鎺掑簭鍔熻兘 ==========
+// ========== 输入序号排序功能 ==========
 function getCurrentPosition(dish) {
-  // 鑾峰彇鑿滃搧鍦ㄥ綋鍓嶅垪琛ㄤ腑鐨勪綅缃紙浠?寮€濮嬶級
+  // 获取菜品在当前列表中的位置（从1开始）
   const sortedList = [...dishes.value].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
   const pos = sortedList.findIndex(d => d.id === dish.id)
   return pos + 1
@@ -767,35 +774,39 @@ function getCurrentPosition(dish) {
 function moveToPosition(dish, newPosStr) {
   const newPos = parseInt(newPosStr)
   if (isNaN(newPos) || newPos < 1 || newPos > dishes.value.length) {
-    alert('璇疯緭鍏?1 鍒?' + dishes.value.length + ' 涔嬮棿鐨勬暟瀛?)
+    alert('请输入 1 到 ' + dishes.value.length + ' 之间的数字')
     return
   }
   
   const currentPos = getCurrentPosition(dish)
-  if (currentPos === newPos) return  // 浣嶇疆娌″彉锛屼笉鐢ㄥ姩
+  if (currentPos === newPos) return  // 位置没变，不用动
   
-  // 浠?dishes.value 涓Щ闄よ繖閬撹彍
+  // 从 dishes.value 中移除这道菜
   const dishIndex = dishes.value.findIndex(d => d.id === dish.id)
   if (dishIndex < 0) return
   const [movedDish] = dishes.value.splice(dishIndex, 1)
   
-  // 鎻掑叆鍒版柊浣嶇疆锛坣ewPos 鏄粠1寮€濮嬬殑锛屾暟缁勬槸浠?寮€濮嬬殑锛?  const insertIndex = newPos - 1
+  // 插入到新位置（newPos 是从1开始的，数组是从0开始的）
+  const insertIndex = newPos - 1
   dishes.value.splice(insertIndex, 0, movedDish)
   
-  // 閲嶆柊缂栧彿 sort_order锛?, 2, 3...锛?  dishes.value.forEach((d, idx) => {
+  // 重新编号 sort_order（1, 2, 3...）
+  dishes.value.forEach((d, idx) => {
     d.sort_order = idx + 1
   })
 }
 
-// ========== 鑿滃搧鎺掑簭鍔熻兘 ==========
-let originalOrder = []  // 淇濆瓨鍘熷椤哄簭锛岀敤浜庡彇娑堟仮澶?
+// ========== 菜品排序功能 ==========
+let originalOrder = []  // 保存原始顺序，用于取消恢复
+
 function enterSortMode() {
   originalOrder = dishes.value.map(d => d.id)
   sortMode.value = true
 }
 
 function cancelSort() {
-  // 鎭㈠鍒板師濮嬮『搴?  const map = {}
+  // 恢复到原始顺序
+  const map = {}
   originalOrder.forEach((id, idx) => { map[id] = idx })
   dishes.value.sort((a, b) => map[a.id] - map[b.id])
   sortMode.value = false
@@ -805,37 +816,38 @@ function moveDish(idx, dir) {
   const list = filteredList.value
   const newIdx = idx + dir
   if (newIdx < 0 || newIdx >= list.length) return
-  // 鍦?dishes.value 閲屾壘鍒拌繖涓や釜鑿滃搧锛屼氦鎹㈠畠浠殑浣嶇疆
+  // 在 dishes.value 里找到这两个菜品，交换它们的位置
   const dishA = list[idx]
   const dishB = list[newIdx]
   const posA = dishes.value.findIndex(d => d.id === dishA.id)
   const posB = dishes.value.findIndex(d => d.id === dishB.id)
   if (posA < 0 || posB < 0) return
-  // 浜ゆ崲 sort_order
+  // 交换 sort_order
   const tmp = dishes.value[posA].sort_order
   dishes.value[posA].sort_order = dishes.value[posB].sort_order
   dishes.value[posB].sort_order = tmp
-  // 閲嶆柊鎺掑簭 dishes锛堣鏄剧ず璺熺潃鍙橈級
+  // 重新排序 dishes（让显示跟着变）
   dishes.value.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
 }
 
 async function saveSort() {
   try {
-    // 鎸夊綋鍓嶆樉绀洪『搴忥紝閲嶆柊璁剧疆 sort_order锛?, 2, 3...锛?    const updates = dishes.value.map((d, idx) => ({
+    // 按当前显示顺序，重新设置 sort_order（1, 2, 3...）
+    const updates = dishes.value.map((d, idx) => ({
       id: d.id,
       sort_order: idx + 1
     }))
-    // 閫愪釜鏇存柊锛圫upabase 涓嶆敮鎸佹壒閲?update 涓嶅悓 id 鐨勪笉鍚屽€硷級
+    // 逐个更新（Supabase 不支持批量 update 不同 id 的不同值）
     for (const u of updates) {
       const { error } = await supabase.from('dishes').update({ sort_order: u.sort_order }).eq('id', u.id)
       if (error) throw error
     }
-    alert('鎺掑簭宸蹭繚瀛橈紒')
+    alert('排序已保存！')
     sortMode.value = false
     loadDishes()
   } catch (err) {
-    console.error('淇濆瓨鎺掑簭澶辫触锛?, err)
-    alert('淇濆瓨鎺掑簭澶辫触锛? + (err.message || err))
+    console.error('保存排序失败：', err)
+    alert('保存排序失败：' + (err.message || err))
   }
 }
 
@@ -921,7 +933,7 @@ async function logout() {
 .btn-del { background: #fff0f0 !important; color: var(--danger) !important; }
 .empty-tip { text-align: center; color: var(--text-secondary); padding: 40px 0; font-size: 13px; }
 
-/* 寮圭獥 */
+/* 弹窗 */
 .modal-mask {
   position: fixed; inset: 0; background: rgba(0,0,0,0.5);
   display: flex; align-items: center; justify-content: center; z-index: 200;
@@ -956,7 +968,7 @@ async function logout() {
 }
 .reorder-row:hover .drag-handle { color: #888; }
 
-/* 涓婁笅绉诲姩鎸夐挳锛堟墜鏈?鐢佃剳閮借兘鐢級 */
+/* 上下移动按钮（手机/电脑都能用） */
 .btn-move {
   width: 22px; height: 22px; border-radius: 4px;
   background: #f0f0f0; color: #666; font-size: 13px; font-weight: bold;
@@ -981,7 +993,7 @@ async function logout() {
 .modal-actions button { flex: 1; padding: 10px; border-radius: 8px; }
 .modal-actions .btn-save { background: var(--primary); color: #fff; font-weight: 500; }
 
-/* 瑁佸壀寮圭獥 */
+/* 裁剪弹窗 */
 .cropper-modal { max-width: 480px; }
 .crop-hint {
   font-size: 12px; color: #888; text-align: center; margin: -6px 0 8px;
@@ -1037,7 +1049,7 @@ async function logout() {
 }
 .btn-skip-crop:hover { background: #ffe7ba; }
 
-/* 鎺掑簭鍔熻兘鏍峰紡 */
+/* 排序功能样式 */
 .sort-tip {
   background: #e8f0fe; color: #1677ff; font-size: 12px;
   padding: 8px 16px; text-align: center;
@@ -1061,7 +1073,7 @@ async function logout() {
 }
 .btn-cancel-sort:hover { background: #ffe0e0; }
 
-/* 鎷栨嫿鎺掑簭鏍峰紡 */
+/* 拖拽排序样式 */
 .dish-admin-card[draggable="true"] {
   cursor: grab;
 }
@@ -1072,7 +1084,7 @@ async function logout() {
   border-top: 3px solid #1677ff !important;
 }
 
-/* 鎺掑簭妯″紡涓嬬殑搴忓彿杈撳叆妗?*/
+/* 排序模式下的序号输入框 */
 .sort-input {
   width: 60px;
   padding: 4px 8px;
@@ -1086,7 +1098,7 @@ async function logout() {
   flex-shrink: 0;
 }
 
-/* 鎺掑簭妯″紡涓嬭彍鍝佸崱鐗囨牱寮?*/
+/* 排序模式下菜品卡片样式 */
 .sort-mode .dish-admin-card {
   border: 1px solid #91caff;
   box-shadow: 0 2px 8px rgba(22,119,255,0.12);

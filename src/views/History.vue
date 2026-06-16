@@ -1,63 +1,63 @@
-﻿<template>
+<template>
   <div class="history-page">
     <header class="top-bar">
       <img v-if="settings.logo_url" :src="settings.logo_url" class="logo" />
       <h1>{{ settings.shop_name }}</h1>
     </header>
 
-    <!-- 瀹㈡埛濮撳悕杈撳叆锛堢櫧鍚嶅崟楠岃瘉锛?-->
+    <!-- 客户姓名输入（白名单验证） -->
     <div v-if="!customerName" class="name-section">
-      <input v-model="nameInput" placeholder="璇疯緭鍏ユ偍鐨勫鍚? @keyup.enter="verifyName" />
+      <input v-model="nameInput" placeholder="请输入您的姓名" @keyup.enter="verifyName" />
       <p v-if="nameError" class="name-error">{{ nameError }}</p>
-      <button @click="verifyName">鏌ョ湅鍘嗗彶</button>
+      <button @click="verifyName">查看历史</button>
     </div>
 
     <div v-else>
       <div class="page-title">
-        <h2>鎴戠殑鍘嗗彶璁㈠崟</h2>
-        <button class="btn-back" @click="$router.push('/')">鈫?杩斿洖鐐归</button>
+        <h2>我的历史订单</h2>
+        <button class="btn-back" @click="$router.push('/')">← 返回点餐</button>
       </div>
 
       <div v-if="orders.length === 0" class="empty">
-        <p>杩樻病鏈夎鍗曡褰?/p>
-        <button @click="$router.push('/')">鍘荤偣椁?/button>
+        <p>还没有订单记录</p>
+        <button @click="$router.push('/')">去点餐</button>
       </div>
 
       <div v-else class="order-list">
         <div v-for="order in orders" :key="order.id" class="order-card" @click="toggleOrder(order.id)">
           <div class="order-header">
             <span class="order-date">{{ formatDate(order.created_at) }}</span>
-            <span v-if="order.expected_time" class="order-time">馃晲 {{ formatDateTime(order.expected_time) }}</span>
-            <span class="order-duration">绾?{{ order.total_time }} 鍒嗛挓</span>
-            <span class="order-arrow">{{ expandedOrder === order.id ? '鈻? : '鈻? }}</span>
+            <span v-if="order.expected_time" class="order-time">🕐 {{ formatDateTime(order.expected_time) }}</span>
+            <span class="order-duration">约 {{ order.total_time }} 分钟</span>
+            <span class="order-arrow">{{ expandedOrder === order.id ? '▲' : '▼' }}</span>
           </div>
           <div class="order-dishes-summary">
-            {{ order.dishes.map(d => d.name).join('銆?) }}
+            {{ order.dishes.map(d => d.name).join('、') }}
           </div>
 
-          <!-- 灞曞紑璇︽儏 -->
+          <!-- 展开详情 -->
           <div v-if="expandedOrder === order.id" class="order-detail">
-            <h4>鑿滃搧璇︽儏锛?/h4>
+            <h4>菜品详情：</h4>
             <div v-for="d in order.dishes" :key="d.id" class="detail-dish">
               <span>{{ d.name }}</span>
-              <span v-if="d.customer_note" class="detail-note">澶囨敞锛歿{ d.customer_note }}</span>
+              <span v-if="d.customer_note" class="detail-note">备注：{{ d.customer_note }}</span>
             </div>
 
-            <!-- 椋熸潗姹囨€?-->
-            <h4>椋熸潗姹囨€伙細</h4>
+            <!-- 食材汇总 -->
+            <h4>食材汇总：</h4>
             <div v-for="(ing, idx) in getOrderIngredients(order)" :key="idx" class="detail-row">
               <span>{{ ing.name }}</span>
               <span>{{ ing.amount }}</span>
             </div>
 
-            <!-- 璋冩枡姹囨€?-->
-            <h4>璋冩枡姹囨€伙細</h4>
+            <!-- 调料汇总 -->
+            <h4>调料汇总：</h4>
             <div v-for="(s, idx) in getOrderSeasonings(order)" :key="idx" class="detail-row">
               <span>{{ s.name }}</span>
               <span>{{ s.amount }}</span>
             </div>
 
-            <p v-if="order.note" class="order-note">璁㈠崟澶囨敞锛歿{ order.note }}</p>
+            <p v-if="order.note" class="order-note">订单备注：{{ order.note }}</p>
           </div>
         </div>
       </div>
@@ -97,13 +97,14 @@ async function verifyName() {
 }
 
 async function verifyAndLoad(name) {
-  // 鍏堥獙璇佹槸鍚﹀湪鐧藉悕鍗?  const { data, error } = await supabase
+  // 先验证是否在白名单
+  const { data, error } = await supabase
     .from('customers')
     .select('name')
     .eq('name', name)
     .single()
   if (error || !data) {
-    nameError.value = '濮撳悕涓嶅瓨鍦紝璇疯仈绯诲帹甯?
+    nameError.value = '姓名不存在，请联系厨师'
     customerName.value = ''
     localStorage.removeItem('cook_customer_name')
     return
@@ -129,13 +130,13 @@ function toggleOrder(id) {
 
 function formatDate(dateStr) {
   const d = new Date(dateStr)
-  return `${d.getMonth()+1}鏈?{d.getDate()}鏃?${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`
+  return `${d.getMonth()+1}月${d.getDate()}日 ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`
 }
 
 function formatDateTime(dt) {
   if (!dt) return ''
   const d = new Date(dt)
-  return `${d.getMonth()+1}鏈?{d.getDate()}鏃?${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`
+  return `${d.getMonth()+1}月${d.getDate()}日 ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`
 }
 
 function getOrderIngredients(order) {
