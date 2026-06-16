@@ -8,7 +8,7 @@
         <button class="btn-nav" @click="$router.push('/admin/orders')">订单</button>
         <button class="btn-settings active-nav" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
-        <span class="version-badge">v2.1.8</span>
+        <span class="version-badge">v2.2.0</span>
       </div>
     </header>
 
@@ -25,6 +25,12 @@
         <button @click="form.logo_url = ''; logoChanged = true">移除Logo</button>
       </div>
       <p v-if="uploading" class="upload-tip">上传中...</p>
+
+      <label>显示"回到顶部"按钮</label>
+      <label class="switch">
+        <input type="checkbox" v-model="form.show_back_to_top" />
+        <span class="slider"></span>
+      </label>
 
       <button class="btn-save" @click="saveSettings" :disabled="saving">
         {{ saving ? '保存中...' : '保存设置' }}
@@ -55,7 +61,8 @@ const router = useRouter()
 
 const form = ref({
   shop_name: '阿旺小厨房',
-  logo_url: ''
+  logo_url: '',
+  show_back_to_top: true
 })
 const uploading = ref(false)
 const saving = ref(false)
@@ -78,7 +85,8 @@ async function loadSettings() {
   if (data) {
     form.value = {
       shop_name: data.shop_name || '阿旺小厨房',
-      logo_url: data.logo_url || ''
+      logo_url: data.logo_url || '',
+      show_back_to_top: data.show_back_to_top !== false
     }
   }
 }
@@ -123,7 +131,8 @@ async function saveSettings() {
     .from('settings')
     .update({
       shop_name: form.value.shop_name.trim(),
-      logo_url: form.value.logo_url
+      logo_url: form.value.logo_url,
+      show_back_to_top: form.value.show_back_to_top
     })
     .eq('id', 1)
     .select('*', { count: 'exact' })
@@ -137,7 +146,8 @@ async function saveSettings() {
       .insert({
         id: 1,
         shop_name: form.value.shop_name.trim(),
-        logo_url: form.value.logo_url
+        logo_url: form.value.logo_url,
+        show_back_to_top: form.value.show_back_to_top
       })
     error = insertError
   }

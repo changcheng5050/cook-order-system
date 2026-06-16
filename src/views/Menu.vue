@@ -77,6 +77,16 @@
         </div>
       </div>
 
+      <!-- 底部提示 -->
+      <div v-if="filteredDishes.length > 0" class="end-hint">
+        已经到底了！
+      </div>
+
+      <!-- 回到顶部按钮 -->
+      <button v-if="showBackToTop && settings.show_back_to_top !== false" class="back-to-top" @click="scrollToTop">
+        ↑
+      </button>
+
       <!-- 底部购物车栏 -->
       <div v-if="cartItems.length > 0" class="cart-bar" @click="showCart = true">
         <div class="cart-icon">
@@ -312,7 +322,7 @@ import { supabase } from '../lib/supabase'
 import { useCart } from '../lib/cart'
 
 const settings = inject('shopSettings')
-const version = ref('v2.1.8')  // v2.1.8: green highlight for expected time
+const version = ref('v2.2.0')  // v2.2.0: back-to-top + 主食分类 + 底部提示
 
 // Logo 图片加载失败时，清除 url 让默认图标显示
 function onLogoError() {
@@ -322,8 +332,16 @@ function onLogoError() {
 // 页签状态
 const currentTab = ref('menu')
 
-const categories = ['全部', '荤菜', '素菜', '汤类', '粉面类']
+const categories = ['全部', '荤', '素', '汤', '粉面', '主食']
 const activeCategory = ref('全部')
+// 分类名映射（兼容旧数据：数据库里可能还是"荤菜"等旧名）
+const categoryNameMap = {
+  '荤': ['荤', '荤菜'],
+  '素': ['素', '素菜'],
+  '汤': ['汤', '汤类'],
+  '粉面': ['粉面', '粉面类'],
+  '主食': ['主食']
+}
 const dishes = ref([])
 const customerName = ref('')
 const nameInput = ref('')
@@ -338,6 +356,7 @@ const expectedTime = ref('')
 const showSuccess = ref(false)
 const submitting = ref(false)  // 防止重复提交
 const kickedOut = ref(false)   // 客户已被删除提示
+const showBackToTop = ref(false)
 const successOrder = ref({ dishes: [], total_time: 0 })
 const successIngredients = ref([])
 const successSeasonings = ref([])
@@ -394,7 +413,16 @@ onMounted(async () => {
   const d = new Date()
   d.setHours(18, 0, 0, 0)
   expectedTime.value = d.toISOString().slice(0, 16)
+
+  // 监听滚动，显示/隐藏回到顶部按钮
+  window.addEventListener('scroll', onScroll)
 })
+function onScroll() {
+  showBackToTop.value = window.scrollY > 400
+}
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
 
 async function verifyName() {
   const name = nameInput.value.trim()
@@ -503,7 +531,9 @@ function doLogout() {
 
 const filteredDishes = computed(() => {
   if (activeCategory.value === '全部') return dishes.value
-  return dishes.value.filter(d => d.category === activeCategory.value)
+  // 兼容新旧分类名
+  const names = categoryNameMap[activeCategory.value] || [activeCategory.value]
+  return dishes.value.filter(d => names.includes(d.category))
 })
 
 const allIngredients = computed(() => {
@@ -730,14 +760,16 @@ function formatDate(dateStr) {
 }
 .cat-btn.cat-全部 { color: var(--primary); border-color: rgba(255,107,53,0.45); background: rgba(255,107,53,0.08); }
 .cat-btn.cat-全部.active { background: var(--primary); color: #fff; border-color: var(--primary); }
-.cat-btn.cat-荤菜 { color: #e53935; border-color: rgba(229,57,53,0.45); background: rgba(229,57,53,0.08); }
-.cat-btn.cat-荤菜.active { background: #e53935; color: #fff; border-color: #e53935; }
-.cat-btn.cat-素菜 { color: #43a047; border-color: rgba(67,160,71,0.45); background: rgba(67,160,71,0.08); }
-.cat-btn.cat-素菜.active { background: #43a047; color: #fff; border-color: #43a047; }
-.cat-btn.cat-汤类 { color: #1e88e5; border-color: rgba(30,136,229,0.45); background: rgba(30,136,229,0.08); }
-.cat-btn.cat-汤类.active { background: #1e88e5; color: #fff; border-color: #1e88e5; }
-.cat-btn.cat-粉面类 { color: #f57c00; border-color: rgba(245,124,0,0.45); background: rgba(245,124,0,0.08); }
-.cat-btn.cat-粉面类.active { background: #f57c00; color: #fff; border-color: #f57c00; }
+.cat-btn.cat-荤 { color: #e53935; border-color: rgba(229,57,53,0.45); background: rgba(229,57,53,0.08); }
+.cat-btn.cat-荤.active { background: #e53935; color: #fff; border-color: #e53935; }
+.cat-btn.cat-素 { color: #43a047; border-color: rgba(67,160,71,0.45); background: rgba(67,160,71,0.08); }
+.cat-btn.cat-素.active { background: #43a047; color: #fff; border-color: #43a047; }
+.cat-btn.cat-汤 { color: #1e88e5; border-color: rgba(30,136,229,0.45); background: rgba(30,136,229,0.08); }
+.cat-btn.cat-汤.active { background: #1e88e5; color: #fff; border-color: #1e88e5; }
+.cat-btn.cat-粉面 { color: #f57c00; border-color: rgba(245,124,0,0.45); background: rgba(245,124,0,0.08); }
+.cat-btn.cat-粉面.active { background: #f57c00; color: #fff; border-color: #f57c00; }
+.cat-btn.cat-主食 { color: #333; border-color: rgba(0,0,0,0.25); background: rgba(0,0,0,0.05); }
+.cat-btn.cat-主食.active { background: #333; color: #fff; border-color: #333; }
 
 /* 菜品卡片 */
 .dish-list { padding: 12px; display: grid; gap: 12px; }
@@ -761,10 +793,11 @@ function formatDate(dateStr) {
   font-size: 10px; padding: 2px 6px; border-radius: 4px;
   color: #fff; font-weight: 500;
 }
-.cat-tag.cat-荤菜 { background: rgba(229,57,53,0.78); }
-.cat-tag.cat-素菜 { background: rgba(67,160,71,0.78); }
-.cat-tag.cat-汤类 { background: rgba(30,136,229,0.78); }
-.cat-tag.cat-粉面类 { background: rgba(245,124,0,0.78); }
+.cat-tag.cat-荤 { background: rgba(229,57,53,0.78); }
+.cat-tag.cat-素 { background: rgba(67,160,71,0.78); }
+.cat-tag.cat-汤 { background: rgba(30,136,229,0.78); }
+.cat-tag.cat-粉面 { background: rgba(245,124,0,0.78); }
+.cat-tag.cat-主食 { background: rgba(0,0,0,0.55); }
 .dish-info { flex: 1; min-width: 0; }
 .dish-info h3 { font-size: 15px; margin-bottom: 4px; }
 .flavor-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 4px; }
@@ -977,10 +1010,11 @@ function formatDate(dateStr) {
   font-size: 10px; padding: 2px 7px; border-radius: 4px;
   font-weight: 500; color: #fff; flex-shrink: 0;
 }
-.detail-cat-tag.cat-荤菜 { background: rgba(229,57,53,0.82); }
-.detail-cat-tag.cat-素菜 { background: rgba(67,160,71,0.82); }
-.detail-cat-tag.cat-汤类 { background: rgba(30,136,229,0.82); }
-.detail-cat-tag.cat-粉面类 { background: rgba(245,124,0,0.82); }
+.detail-cat-tag.cat-荤 { background: rgba(229,57,53,0.82); }
+.detail-cat-tag.cat-素 { background: rgba(67,160,71,0.82); }
+.detail-cat-tag.cat-汤 { background: rgba(30,136,229,0.82); }
+.detail-cat-tag.cat-粉面 { background: rgba(245,124,0,0.82); }
+.detail-cat-tag.cat-主食 { background: rgba(0,0,0,0.65); }
 .detail-dish-img { width: 52px; height: 52px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
 .detail-dish-ph {
   width: 52px; height: 52px; border-radius: 8px; background: linear-gradient(135deg,#f5f5f0,#e8e8e0);
@@ -1045,5 +1079,21 @@ function formatDate(dateStr) {
 .kicked-out-box .btn-confirm {
   width: 100%; padding: 12px; border-radius: 8px;
   background: var(--primary); color: #fff; font-weight: 500;
+}
+/* 底部提示 */
+.end-hint {
+  text-align: center; padding: 24px 16px;
+  color: #999; font-size: 13px;
+}
+/* 回到顶部按钮 */
+.back-to-top {
+  position: fixed; bottom: 80px; right: 20px;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--primary); color: #fff;
+  font-size: 20px; font-weight: bold;
+  border: none; cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  z-index: 100; display: flex;
+  align-items: center; justify-content: center;
 }
 </style>

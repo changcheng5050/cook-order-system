@@ -7,7 +7,7 @@
         <button class="btn-nav" @click="$router.push('/admin/orders')">订单</button>
         <button class="btn-settings" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
-        <span class="version-badge">v2.1.8</span>
+        <span class="version-badge">v2.2.0</span>
       </div>
     </header>
 
@@ -240,7 +240,7 @@ const dragIdx = ref(-1)  // 正在拖拽的卡片索引
 const dragOverIdx = ref(-1)  // 拖拽悬停的卡片索引
 const dragCardStyle = { opacity: '0.5' }  // 拖拽时卡片变淡
 
-const categoryOptions = ['荤菜', '素菜', '汤类', '粉面类', '主食']
+const categoryOptions = ['荤', '素', '汤', '粉面', '主食']
 
 const form = ref({
   name: '',
