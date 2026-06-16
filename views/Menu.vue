@@ -138,7 +138,7 @@
       </div>
     </div>
 
-    <!-- 购物车弹窗 -->
+    <!-- 购物车弹窗提示 -->
     <div v-if="showCart" class="modal-mask" @click.self="showCart = false">
       <div class="modal-box cart-modal">
         <h2>我的餐桌</h2>
