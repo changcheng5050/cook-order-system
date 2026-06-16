@@ -7,19 +7,19 @@
         <button class="btn-nav" @click="$router.push('/admin/orders')">订单</button>
         <button class="btn-settings" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
-        <span class="version-badge">v2.0.18</span>
+        <span class="version-badge">v2.0.17</span>
       </div>
     </header>
 
     <!-- 新增菜品按钮 + 搜索 + 排序 -->
     <div class="toolbar">
       <button class="btn-add" @click="openAddModal">+ 新增菜品</button>
-      <input v-model="searchKey" placeholder="🔍 搜索菜名..." class="search-input" :disabled="sortMode" />
-      <select v-model="filterCategory" class="filter-select" :disabled="sortMode">
+      <input v-model="searchKey" placeholder="🔍 搜索菜名..." class="search-input" />
+      <select v-model="filterCategory" class="filter-select">
         <option value="">全部分类</option>
         <option v-for="c in categoryOptions" :key="c" :value="c">{{ c }}</option>
       </select>
-      <select v-model="filterActive" class="filter-select" :disabled="sortMode">
+      <select v-model="filterActive" class="filter-select">
         <option value="all">全部</option>
         <option value="active">上架中</option>
         <option value="inactive">已下架</option>
@@ -30,22 +30,11 @@
     </div>
 
     <!-- 排序模式提示 -->
-    <div v-if="sortMode" class="sort-tip">
-      🖱️ 排序模式：拖动卡片调整顺序，或点击 ⬆️ ⬇️ 按钮，完成后点"保存排序"
-    </div>
+    <div v-if="sortMode" class="sort-tip">排序模式：点击 ⬆️ ⬇️ 调整顺序，完成后点"保存排序"</div>
 
     <!-- 菜品列表 -->
-    <div class="dish-admin-list" :class="{ 'sort-mode': sortMode }">
-      <div v-for="(dish, idx) in filteredList" :key="dish.id"
-           class="dish-admin-card"
-           :draggable="sortMode"
-           @dragstart="onDishDragStart($event, idx)"
-           @dragover.prevent="onDishDragOver($event, idx)"
-           @drop="onDishDrop($event, idx)"
-           @dragend="onDishDragEnd"
-           :style="dragIdx === idx ? dragCardStyle : {}"
-           :class="{ 'drag-over-top': dragOverIdx === idx && dragIdx !== idx }"
-      >
+    <div class="dish-admin-list">
+      <div v-for="(dish, idx) in filteredList" :key="dish.id" class="dish-admin-card">
         <img v-if="dish.image_url" :src="dish.image_url" class="admin-dish-img" />
         <div v-else class="admin-img-placeholder">无图</div>
         <div class="admin-dish-info">
@@ -265,13 +254,8 @@ let pendingFile = null
 let containerW = 400
 let containerH = 320
 
-// 拖拽排序（食材/调料行）
+// 拖拽排序
 let dragState = { idx: -1, type: '' }
-
-// ========== 菜品拖拽排序 ==========
-let dishDragIdx = ref(-1)        // 正在拖拽的菜品索引
-let dishDragOverIdx = ref(-1)    // 当前拖拽悬停的菜品索引
-const dragCardStyle = { opacity: 0.35, transform: 'scale(0.97)' }
 
 const filteredList = computed(() => {
   let list = dishes.value
@@ -375,7 +359,7 @@ function addTag() {
   tagInput.value = ''
 }
 
-// ========== 食材/调料拖拽排序 ==========
+// ========== 拖拽排序 ==========
 function onDragStart(idx, type) {
   dragState = { idx, type }
 }
@@ -391,62 +375,6 @@ function onDrop(idx, type) {
   const [item] = list.splice(from, 1)
   list.splice(to, 0, item)
   dragState = { idx: -1, type: '' }
-}
-
-// ========== 菜品卡片拖拽排序 ==========
-function onDishDragStart(e, idx) {
-  dishDragIdx.value = idx
-  e.dataTransfer.effectAllowed = 'move'
-  e.dataTransfer.setData('text/plain', idx)
-  // 设置拖拽图片
-  const card = e.target.closest('.dish-admin-card')
-  if (card) {
-    e.dataTransfer.setDragImage(card, 40, 30)
-  }
-}
-
-function onDishDragOver(e, idx) {
-  if (dishDragIdx.value === idx) return
-  e.dataTransfer.dropEffect = 'move'
-  dishDragOverIdx.value = idx
-}
-
-function onDishDrop(e, toIdx) {
-  e.preventDefault()
-  const fromIdx = dishDragIdx.value
-  if (fromIdx < 0 || fromIdx === toIdx) {
-    resetDishDrag()
-    return
-  }
-
-  // 在 dishes.value 中找到这两个菜品，交换 sort_order
-  const dishA = filteredList.value[fromIdx]
-  const dishB = filteredList.value[toIdx]
-  const posA = dishes.value.findIndex(d => d.id === dishA.id)
-  const posB = dishes.value.findIndex(d => d.id === dishB.id)
-  if (posA < 0 || posB < 0) {
-    resetDishDrag()
-    return
-  }
-
-  // 交换 sort_order
-  const tmp = dishes.value[posA].sort_order
-  dishes.value[posA].sort_order = dishes.value[posB].sort_order
-  dishes.value[posB].sort_order = tmp
-
-  // 重新排序 dishes（让显示跟着变）
-  dishes.value.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-
-  resetDishDrag()
-}
-
-function onDishDragEnd() {
-  resetDishDrag()
-}
-
-function resetDishDrag() {
-  dishDragIdx.value = -1
-  dishDragOverIdx.value = -1
 }
 
 // ========== 图片选择 → 裁剪（可选）==========
@@ -770,13 +698,8 @@ async function deleteDish(id) {
 let originalOrder = []  // 保存原始顺序，用于取消恢复
 
 function enterSortMode() {
-  // 进入排序模式时，清除筛选条件，显示所有菜品
-  searchKey.value = ''
-  filterCategory.value = ''
-  filterActive.value = 'all'
   originalOrder = dishes.value.map(d => d.id)
   sortMode.value = true
-  resetDishDrag()
 }
 
 function cancelSort() {
@@ -785,7 +708,6 @@ function cancelSort() {
   originalOrder.forEach((id, idx) => { map[id] = idx })
   dishes.value.sort((a, b) => map[a.id] - map[b.id])
   sortMode.value = false
-  resetDishDrag()
 }
 
 function moveDish(idx, dir) {
@@ -818,9 +740,8 @@ async function saveSort() {
       const { error } = await supabase.from('dishes').update({ sort_order: u.sort_order }).eq('id', u.id)
       if (error) throw error
     }
-    alert('✅ 排序已保存！')
+    alert('排序已保存！')
     sortMode.value = false
-    resetDishDrag()
     loadDishes()
   } catch (err) {
     console.error('保存排序失败：', err)
@@ -874,37 +795,15 @@ async function logout() {
 .filter-select {
   padding: 6px 8px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px;
 }
-.filter-select:disabled { background: #f5f5f5; color: #999; cursor: not-allowed; }
 .search-input {
   flex: 1; min-width: 100px; padding: 6px 10px;
   border: 1px solid #ddd; border-radius: 8px; font-size: 13px;
 }
-.search-input:disabled { background: #f5f5f5; color: #999; }
 
 .dish-admin-list { padding: 12px; }
-.dish-admin-list.sort-mode { padding: 12px 12px 80px 12px; }
 .dish-admin-card {
   display: flex; gap: 10px; background: #fff; border-radius: 12px;
   padding: 12px; margin-bottom: 10px; align-items: flex-start;
-  transition: box-shadow 0.2s, opacity 0.2s, transform 0.15s;
-  cursor: default;
-  border: 2px solid transparent;
-}
-/* 排序模式下卡片可拖拽 */
-.sort-mode .dish-admin-card {
-  cursor: grab;
-  transition: box-shadow 0.2s, border-color 0.2s, opacity 0.2s, transform 0.15s;
-}
-.sort-mode .dish-admin-card:active { cursor: grabbing; }
-.sort-mode .dish-admin-card:hover {
-  border-color: #91caff;
-  box-shadow: 0 2px 12px rgba(22,119,255,0.18);
-}
-/* 拖拽时目标位置高亮：蓝色顶边 */
-.dish-admin-card.drag-over-top {
-  border-top: 3px solid #1677ff !important;
-  margin-top: -1px;
-  box-shadow: 0 4px 16px rgba(22,119,255,0.22);
 }
 .admin-dish-img { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
 .admin-img-placeholder {
@@ -1050,8 +949,8 @@ async function logout() {
 
 /* 排序功能样式 */
 .sort-tip {
-  background: #e8f0fe; color: #1677ff; font-size: 13px;
-  padding: 10px 16px; text-align: center; font-weight: 500;
+  background: #e8f0fe; color: #1677ff; font-size: 12px;
+  padding: 8px 16px; text-align: center;
 }
 .btn-sort {
   padding: 6px 14px; background: #e8f0fe; color: #1677ff;
@@ -1081,4 +980,11 @@ async function logout() {
 }
 .btn-move-sort:hover:not(:disabled) { background: #bae0ff; color: #0958d9; }
 .btn-move-sort:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* 排序模式下菜品卡片样式 */
+.dish-admin-card { transition: box-shadow 0.2s; }
+.sort-mode .dish-admin-card {
+  border: 1px solid #91caff;
+  box-shadow: 0 2px 8px rgba(22,119,255,0.12);
+}
 </style>
