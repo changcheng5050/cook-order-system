@@ -7,7 +7,7 @@
         <button class="btn-nav" @click="$router.push('/admin/orders')">订单</button>
         <button class="btn-settings" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
-        <span class="version-badge">v2.0.19</span>
+        <span class="version-badge">v2.0.20</span>
       </div>
     </header>
 
@@ -30,7 +30,9 @@
     </div>
 
     <!-- 排序模式提示 -->
-    <div v-if="sortMode" class="sort-tip">排序模式：拖动卡片调整顺序，或点击上下按钮，完成后点"保存排序"</div>
+    <div v-if="sortMode" class="sort-tip">
+      💡 排序模式：在输入框填写序号（如 1, 2, 3...），按回车确认，完成后点"保存排序"
+    </div>
 
     <!-- 菜品列表 -->
     <div class="dish-admin-list" :class="{ 'sort-mode': sortMode }">
@@ -38,13 +40,6 @@
         v-for="(dish, idx) in filteredList"
         :key="dish.id"
         class="dish-admin-card"
-        :draggable="sortMode"
-        @dragstart="onDragStartCard($event, idx)"
-        @dragover.prevent="onDragOverCard($event, idx)"
-        @drop="onDropCard($event, idx)"
-        @dragend="onDragEndCard"
-        :class="{ 'drag-over': dragOverIdx === idx && dragIdx !== idx }"
-        :style="dragIdx === idx ? dragCardStyle : {}"
       >
         <img v-if="dish.image_url" :src="dish.image_url" class="admin-dish-img" />
         <div v-else class="admin-img-placeholder">无图</div>
@@ -57,10 +52,18 @@
           <p v-if="dish.notes" class="dish-note-text">📝 {{ dish.notes }}</p>
         </div>
         <div class="admin-dish-actions">
-          <!-- 排序模式：显示上下按钮 -->
+          <!-- 排序模式：显示序号输入框 -->
           <template v-if="sortMode">
-            <button class="btn-move-sort" @click="moveDish(idx, -1)" :disabled="idx === 0" title="上移">⬆️</button>
-            <button class="btn-move-sort" @click="moveDish(idx, 1)" :disabled="idx === filteredList.length - 1" title="下移">⬇️</button>
+            <input
+              type="number"
+              class="sort-input"
+              :value="getCurrentPosition(dish)"
+              @keyup.enter="moveToPosition(dish, $event.target.value)"
+              @blur="moveToPosition(dish, $event.target.value)"
+              :placeholder="getCurrentPosition(dish)"
+              min="1"
+              :max="filteredList.length"
+            />
           </template>
           <!-- 正常模式：显示编辑/上架/删除 -->
           <template v-else>
@@ -224,9 +227,6 @@ const searchKey = ref('')
 const tagInput = ref('')
 const uploading = ref(false)
 const sortMode = ref(false)  // 排序模式
-const dragIdx = ref(-1)  // 正在拖拽的卡片索引
-const dragOverIdx = ref(-1)  // 拖拽悬停的卡片索引
-const dragCardStyle = { opacity: '0.5' }  // 拖拽时卡片变淡
 
 const categoryOptions = ['荤菜', '素菜', '汤类', '粉面类', '主食']
 
@@ -708,49 +708,37 @@ async function deleteDish(id) {
   loadDishes()
 }
 
-// ========== 拖拽排序（拖动整个卡片）==========
-function onDragStartCard(e, idx) {
-  if (!sortMode.value) return
-  dragIdx.value = idx
-  e.dataTransfer.effectAllowed = 'move'
-  e.dataTransfer.setData('text/plain', idx)
+// ========== 输入序号排序功能 ==========
+function getCurrentPosition(dish) {
+  // 获取菜品在当前列表中的位置（从1开始）
+  const sortedList = [...dishes.value].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+  const pos = sortedList.findIndex(d => d.id === dish.id)
+  return pos + 1
 }
 
-function onDragOverCard(e, idx) {
-  if (!sortMode.value) return
-  e.preventDefault()
-  dragOverIdx.value = idx
-}
-
-function onDropCard(e, idx) {
-  if (!sortMode.value) return
-  e.preventDefault()
-  const from = dragIdx.value
-  const to = idx
-  if (from < 0 || from === to) return
+function moveToPosition(dish, newPosStr) {
+  const newPos = parseInt(newPosStr)
+  if (isNaN(newPos) || newPos < 1 || newPos > dishes.value.length) {
+    alert('请输入 1 到 ' + dishes.value.length + ' 之间的数字')
+    return
+  }
   
-  // 在 dishes.value 中找到这两个菜品，交换它们的 sort_order
-  const dishA = filteredList.value[from]
-  const dishB = filteredList.value[to]
-  const posA = dishes.value.findIndex(d => d.id === dishA.id)
-  const posB = dishes.value.findIndex(d => d.id === dishB.id)
-  if (posA < 0 || posB < 0) return
+  const currentPos = getCurrentPosition(dish)
+  if (currentPos === newPos) return  // 位置没变，不用动
   
-  // 交换 sort_order
-  const tmp = dishes.value[posA].sort_order
-  dishes.value[posA].sort_order = dishes.value[posB].sort_order
-  dishes.value[posB].sort_order = tmp
+  // 从 dishes.value 中移除这道菜
+  const dishIndex = dishes.value.findIndex(d => d.id === dish.id)
+  if (dishIndex < 0) return
+  const [movedDish] = dishes.value.splice(dishIndex, 1)
   
-  // 重新排序 dishes（让显示跟着变）
-  dishes.value.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+  // 插入到新位置（newPos 是从1开始的，数组是从0开始的）
+  const insertIndex = newPos - 1
+  dishes.value.splice(insertIndex, 0, movedDish)
   
-  dragIdx.value = -1
-  dragOverIdx.value = -1
-}
-
-function onDragEndCard() {
-  dragIdx.value = -1
-  dragOverIdx.value = -1
+  // 重新编号 sort_order（1, 2, 3...）
+  dishes.value.forEach((d, idx) => {
+    d.sort_order = idx + 1
+  })
 }
 
 // ========== 菜品排序功能 ==========
@@ -1030,25 +1018,18 @@ async function logout() {
 }
 .btn-cancel-sort:hover { background: #ffe0e0; }
 
-/* 排序模式下的上下移动按钮 */
-.btn-move-sort {
-  width: 28px; height: 28px; border-radius: 6px;
-  background: #e8f0fe; color: #1677ff; font-size: 16px;
-  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-  border: 1px solid #91caff; cursor: pointer;
-}
-.btn-move-sort:hover:not(:disabled) { background: #bae0ff; color: #0958d9; }
-.btn-move-sort:disabled { opacity: 0.3; cursor: not-allowed; }
-
-/* 拖拽排序样式 */
-.dish-admin-card[draggable="true"] {
-  cursor: grab;
-}
-.dish-admin-card[draggable="true"]:active {
-  cursor: grabbing;
-}
-.drag-over {
-  border-top: 3px solid #1677ff !important;
+/* 排序模式下的序号输入框 */
+.sort-input {
+  width: 60px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #1677ff;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  color: #1677ff;
+  background: #e8f0fe;
+  flex-shrink: 0;
 }
 
 /* 排序模式下菜品卡片样式 */
