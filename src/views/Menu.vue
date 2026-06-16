@@ -325,7 +325,7 @@ import { supabase } from '../lib/supabase'
 import { useCart } from '../lib/cart'
 
 const settings = inject('shopSettings')
-const version = ref('v2.2.2')  // v2.2.2: 修复✕按钮随滚动、时间选择器出格
+const version = ref('v2.2.3')  // v2.2.3: 微信分享卡片OG标签+logo图片
 
 // Logo 图片加载失败时，清除 url 让默认图标显示
 function onLogoError() {
