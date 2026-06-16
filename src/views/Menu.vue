@@ -293,7 +293,7 @@ import { supabase } from '../lib/supabase'
 import { useCart } from '../lib/cart'
 
 const settings = inject('shopSettings')
-const version = ref('v2.0.16')
+const version = ref('v2.0.17')
 
 // Logo 图片加载失败时，清除 url 让默认图标显示
 function onLogoError() {
@@ -371,6 +371,7 @@ async function loadDishes() {
     .from('dishes')
     .select('*')
     .eq('is_active', true)
+    .order('sort_order', { ascending: true })
     .order('created_at', { ascending: false })
   if (!error) dishes.value = data || []
 }

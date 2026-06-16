@@ -7,11 +7,11 @@
         <button class="btn-nav" @click="$router.push('/admin/orders')">订单</button>
         <button class="btn-settings" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
-        <span class="version-badge">v2.0.16</span>
+        <span class="version-badge">v2.0.17</span>
       </div>
     </header>
 
-    <!-- 新增菜品按钮 + 搜索 -->
+    <!-- 新增菜品按钮 + 搜索 + 排序 -->
     <div class="toolbar">
       <button class="btn-add" @click="openAddModal">+ 新增菜品</button>
       <input v-model="searchKey" placeholder="🔍 搜索菜名..." class="search-input" />
@@ -24,11 +24,17 @@
         <option value="active">上架中</option>
         <option value="inactive">已下架</option>
       </select>
+      <button v-if="!sortMode" class="btn-sort" @click="enterSortMode">排序</button>
+      <button v-else class="btn-save-sort" @click="saveSort">保存排序</button>
+      <button v-if="sortMode" class="btn-cancel-sort" @click="cancelSort">取消</button>
     </div>
+
+    <!-- 排序模式提示 -->
+    <div v-if="sortMode" class="sort-tip">排序模式：点击 ⬆️ ⬇️ 调整顺序，完成后点"保存排序"</div>
 
     <!-- 菜品列表 -->
     <div class="dish-admin-list">
-      <div v-for="dish in filteredList" :key="dish.id" class="dish-admin-card">
+      <div v-for="(dish, idx) in filteredList" :key="dish.id" class="dish-admin-card">
         <img v-if="dish.image_url" :src="dish.image_url" class="admin-dish-img" />
         <div v-else class="admin-img-placeholder">无图</div>
         <div class="admin-dish-info">
@@ -40,9 +46,17 @@
           <p v-if="dish.notes" class="dish-note-text">📝 {{ dish.notes }}</p>
         </div>
         <div class="admin-dish-actions">
-          <button class="btn-edit" @click="openEditModal(dish)">编辑</button>
-          <button :class="dish.is_active ? 'btn-unlist' : 'btn-list'" @click="toggleActive(dish)">{{ dish.is_active ? '下架' : '上架' }}</button>
-          <button class="btn-del" @click="deleteDish(dish.id)">删除</button>
+          <!-- 排序模式：显示上下按钮 -->
+          <template v-if="sortMode">
+            <button class="btn-move-sort" @click="moveDish(idx, -1)" :disabled="idx === 0" title="上移">⬆️</button>
+            <button class="btn-move-sort" @click="moveDish(idx, 1)" :disabled="idx === filteredList.length - 1" title="下移">⬇️</button>
+          </template>
+          <!-- 正常模式：显示编辑/上架/删除 -->
+          <template v-else>
+            <button class="btn-edit" @click="openEditModal(dish)">编辑</button>
+            <button :class="dish.is_active ? 'btn-unlist' : 'btn-list'" @click="toggleActive(dish)">{{ dish.is_active ? '下架' : '上架' }}</button>
+            <button class="btn-del" @click="deleteDish(dish.id)">删除</button>
+          </template>
         </div>
       </div>
       <div v-if="filteredList.length === 0" class="empty-tip">暂无菜品</div>
@@ -198,6 +212,7 @@ const filterActive = ref('all')
 const searchKey = ref('')
 const tagInput = ref('')
 const uploading = ref(false)
+const sortMode = ref(false)  // 排序模式
 
 const categoryOptions = ['荤菜', '素菜', '汤类', '粉面类', '主食']
 
@@ -266,7 +281,7 @@ async function checkAuth() {
 }
 
 async function loadDishes() {
-  const { data } = await supabase.from('dishes').select('*').order('created_at', { ascending: false })
+  const { data } = await supabase.from('dishes').select('*').order('sort_order', { ascending: true }).order('created_at', { ascending: false })
   dishes.value = data || []
 }
 
@@ -649,6 +664,14 @@ async function saveDish() {
   if (isEdit.value) {
     ;({ error } = await supabase.from('dishes').update(payload).eq('id', editingId.value))
   } else {
+    // 新增菜品：sort_order 设为当前最大值 + 1（排到最后）
+    const { data: maxData } = await supabase
+      .from('dishes')
+      .select('sort_order')
+      .order('sort_order', { ascending: false })
+      .limit(1)
+    const maxSort = (maxData && maxData[0] && maxData[0].sort_order) || 0
+    payload.sort_order = maxSort + 1
     ;({ error } = await supabase.from('dishes').insert(payload))
   }
   if (error) {
@@ -669,6 +692,61 @@ async function deleteDish(id) {
   if (!confirm('确定删除这道菜？')) return
   await supabase.from('dishes').delete().eq('id', id)
   loadDishes()
+}
+
+// ========== 菜品排序功能 ==========
+let originalOrder = []  // 保存原始顺序，用于取消恢复
+
+function enterSortMode() {
+  originalOrder = dishes.value.map(d => d.id)
+  sortMode.value = true
+}
+
+function cancelSort() {
+  // 恢复到原始顺序
+  const map = {}
+  originalOrder.forEach((id, idx) => { map[id] = idx })
+  dishes.value.sort((a, b) => map[a.id] - map[b.id])
+  sortMode.value = false
+}
+
+function moveDish(idx, dir) {
+  const list = filteredList.value
+  const newIdx = idx + dir
+  if (newIdx < 0 || newIdx >= list.length) return
+  // 在 dishes.value 里找到这两个菜品，交换它们的位置
+  const dishA = list[idx]
+  const dishB = list[newIdx]
+  const posA = dishes.value.findIndex(d => d.id === dishA.id)
+  const posB = dishes.value.findIndex(d => d.id === dishB.id)
+  if (posA < 0 || posB < 0) return
+  // 交换 sort_order
+  const tmp = dishes.value[posA].sort_order
+  dishes.value[posA].sort_order = dishes.value[posB].sort_order
+  dishes.value[posB].sort_order = tmp
+  // 重新排序 dishes（让显示跟着变）
+  dishes.value.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+}
+
+async function saveSort() {
+  try {
+    // 按当前显示顺序，重新设置 sort_order（1, 2, 3...）
+    const updates = dishes.value.map((d, idx) => ({
+      id: d.id,
+      sort_order: idx + 1
+    }))
+    // 逐个更新（Supabase 不支持批量 update 不同 id 的不同值）
+    for (const u of updates) {
+      const { error } = await supabase.from('dishes').update({ sort_order: u.sort_order }).eq('id', u.id)
+      if (error) throw error
+    }
+    alert('排序已保存！')
+    sortMode.value = false
+    loadDishes()
+  } catch (err) {
+    console.error('保存排序失败：', err)
+    alert('保存排序失败：' + (err.message || err))
+  }
 }
 
 function closeModal() {
@@ -868,4 +946,45 @@ async function logout() {
   cursor: pointer; font-weight: 500;
 }
 .btn-skip-crop:hover { background: #ffe7ba; }
+
+/* 排序功能样式 */
+.sort-tip {
+  background: #e8f0fe; color: #1677ff; font-size: 12px;
+  padding: 8px 16px; text-align: center;
+}
+.btn-sort {
+  padding: 6px 14px; background: #e8f0fe; color: #1677ff;
+  border-radius: 8px; font-size: 13px; font-weight: 500;
+  border: 1px solid #91caff; white-space: nowrap;
+}
+.btn-sort:hover { background: #bae0ff; }
+.btn-save-sort {
+  padding: 6px 14px; background: #d4f7e6; color: #00a870;
+  border-radius: 8px; font-size: 13px; font-weight: 500;
+  border: 1px solid #87dca0; white-space: nowrap;
+}
+.btn-save-sort:hover { background: #a1f0c4; }
+.btn-cancel-sort {
+  padding: 6px 14px; background: #fff0f0; color: #e55a2b;
+  border-radius: 8px; font-size: 13px; font-weight: 500;
+  border: 1px solid #f5c6c0; white-space: nowrap;
+}
+.btn-cancel-sort:hover { background: #ffe0e0; }
+
+/* 排序模式下的上下移动按钮 */
+.btn-move-sort {
+  width: 28px; height: 28px; border-radius: 6px;
+  background: #e8f0fe; color: #1677ff; font-size: 16px;
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  border: 1px solid #91caff; cursor: pointer;
+}
+.btn-move-sort:hover:not(:disabled) { background: #bae0ff; color: #0958d9; }
+.btn-move-sort:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* 排序模式下菜品卡片样式 */
+.dish-admin-card { transition: box-shadow 0.2s; }
+.sort-mode .dish-admin-card {
+  border: 1px solid #91caff;
+  box-shadow: 0 2px 8px rgba(22,119,255,0.12);
+}
 </style>
