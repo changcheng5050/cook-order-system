@@ -312,7 +312,7 @@ import { supabase } from '../lib/supabase'
 import { useCart } from '../lib/cart'
 
 const settings = inject('shopSettings')
-const version = ref('v2.1.5')  // v2.1.5: square crop + slider + order customer filter
+const version = ref('v2.1.8')  // v2.1.8: green highlight for expected time
 
 // Logo 图片加载失败时，清除 url 让默认图标显示
 function onLogoError() {
@@ -848,11 +848,17 @@ function formatDate(dateStr) {
   flex-shrink: 0; cursor: pointer; display: flex;
   align-items: center; justify-content: center; line-height: 1;
 }
-.expected-time-section { margin-top: 12px; }
-.expected-time-section label { font-size: 13px; font-weight: 500; display: block; margin-bottom: 4px; }
+.expected-time-section {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #f0faf4;
+  border: 1.5px solid #00a870;
+  border-radius: 8px;
+}
+.expected-time-section label { font-size: 13px; font-weight: 500; display: block; margin-bottom: 6px; color: #00a870; }
 .required { color: #e55a2b; }
 .time-input {
-  width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px;
+  width: 100%; padding: 8px 10px; border: 1px solid #00a870; border-radius: 8px;
   font-size: 14px;
 }
 .order-note-section { margin-top: 12px; }
@@ -1026,7 +1032,7 @@ function formatDate(dateStr) {
   flex: 1; padding: 10px; border-radius: 8px;
   font-size: 14px; font-weight: 500;
 }
-.btn-close { background: #f0f0f0; color: #666; }
+.btn-close { background: transparent; color: #666; border: 1.5px solid #ccc; }
 .btn-add-from-detail { background: var(--primary); color: #fff; }
 .btn-added-from-detail { background: #e6f7ee; color: #00a870; }
 
@@ -1039,9 +1045,5 @@ function formatDate(dateStr) {
 .kicked-out-box .btn-confirm {
   width: 100%; padding: 12px; border-radius: 8px;
   background: var(--primary); color: #fff; font-weight: 500;
-}
-.btn-close {
-  width: 100%; padding: 10px; background: var(--primary); color: #fff;
-  border-radius: 8px; margin-top: 16px;
 }
 </style>
