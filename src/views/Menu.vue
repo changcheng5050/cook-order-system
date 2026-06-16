@@ -8,7 +8,7 @@
       <span class="version-in-header">{{ version }}</span>
     </header>
 
-        <div v-if="!customerName || showSuccess" class="name-modal">
+        <div v-if="!customerName && !showSuccess" class="name-modal">
           <div class="name-box">
             <h2>🍳 {{ settings.shop_name }}</h2>
             <p class="welcome-text">欢迎光临，请输入您的姓名</p>
@@ -293,7 +293,7 @@ import { supabase } from '../lib/supabase'
 import { useCart } from '../lib/cart'
 
 const settings = inject('shopSettings')
-const version = ref('v2.0.22')
+const version = ref('v2.0.23')
 
 // Logo 图片加载失败时，清除 url 让默认图标显示
 function onLogoError() {
