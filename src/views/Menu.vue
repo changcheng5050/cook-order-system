@@ -298,7 +298,7 @@ import { supabase } from '../lib/supabase'
 import { useCart } from '../lib/cart'
 
 const settings = inject('shopSettings')
-const version = ref('v2.1.1')  // v2.1.1 release
+const version = ref('v2.1.2')  // v2.1.2 release: fix submit lock + notification
 
 // Logo 图片加载失败时，清除 url 让默认图标显示
 function onLogoError() {
@@ -571,12 +571,14 @@ async function submitOrder() {
   expectedTime.value = ''
   showCart.value = false
   showSuccess.value = true
+  submitting.value = false  // 释放提交锁，允许下次提交
   // 刷新历史记录
   loadHistory()
 }
 
 function closeSuccess() {
   showSuccess.value = false
+  submitting.value = false  // 关闭弹窗时也确保释放锁
 }
 
 function formatDateTime(dt) {

@@ -11,7 +11,7 @@
         <button class="btn-batch" @click="toggleBatch">{{ batchMode ? '取消' : '批量删除' }}</button>
         <button v-if="notificationPermission !== 'granted'" class="btn-notify" @click="requestNotificationPermission">🔔 开启通知</button>
         <span v-else class="notify-active">🔔 通知已开启</span>
-        <span class="version-badge">v2.1.1</span>
+        <span class="version-badge">v2.1.2</span>
       </div>
     </header>
 
@@ -209,20 +209,36 @@ async function deleteOrder(id) {
 // ===== 浏览器通知功能 =====
 async function requestNotificationPermission() {
   if (!('Notification' in window)) {
-    console.log('此浏览器不支持通知')
+    alert('此浏览器不支持通知功能')
     return
   }
+  console.log('当前通知权限状态：', Notification.permission)
   if (Notification.permission === 'granted') {
     notificationPermission.value = 'granted'
-  } else if (Notification.permission !== 'denied') {
-    try {
-      const result = await Notification.requestPermission()
-      notificationPermission.value = result
-    } catch (e) {
-      console.log('请求通知权限失败', e)
-    }
-  } else {
+    // 立即发送一条测试通知
+    new Notification('🔔 通知已开启', { body: '阿旺小厨房将在收到新订单时通知您' })
+    return
+  }
+  if (Notification.permission === 'denied') {
     notificationPermission.value = 'denied'
+    alert('通知权限被拒绝。请在浏览器地址栏左侧的锁形图标中重新开启通知权限。')
+    return
+  }
+  // default 状态：用户点击触发，可以请求
+  try {
+    const result = await Notification.requestPermission()
+    console.log('请求通知权限结果：', result)
+    notificationPermission.value = result
+    if (result === 'granted') {
+      new Notification('🔔 通知已开启', { body: '阿旺小厨房将在收到新订单时通知您' })
+      // 授权后立即检查一次
+      checkNewOrders()
+    } else {
+      alert('通知权限未授予，无法接收新订单通知。')
+    }
+  } catch (e) {
+    console.log('请求通知权限失败', e)
+    alert('请求通知权限失败：' + e.message)
   }
 }
 
@@ -231,13 +247,18 @@ async function checkNewOrders() {
   try {
     const { data, error } = await supabase
       .from('orders')
-      .select('id, customer_name, dishes')
+      .select('id, customer_name, dishes, created_at')
       .order('created_at', { ascending: false })
-    if (error || !data) return
+    if (error || !data) {
+      console.log('查询订单失败', error)
+      return
+    }
     const currentCount = data.length
+    console.log(`[通知检查] 上次: ${lastOrderCount.value}, 当前: ${currentCount}`)
     if (lastOrderCount.value > 0 && currentCount > lastOrderCount.value) {
       // 有新订单！
       const newOrders = data.slice(0, currentCount - lastOrderCount.value)
+      console.log(`[通知检查] 发现 ${newOrders.length} 个新订单`)
       newOrders.forEach(order => {
         if (Notification.permission === 'granted') {
           try {
@@ -245,9 +266,12 @@ async function checkNewOrders() {
               body: `${order.customer_name} 点了 ${order.dishes.length} 道菜`,
               tag: order.id
             })
+            console.log('已发送通知：', order.customer_name)
           } catch (e) {
             console.log('发送通知失败', e)
           }
+        } else {
+          console.log('通知权限未授予，跳过')
         }
       })
     }
@@ -260,16 +284,16 @@ async function checkNewOrders() {
 onMounted(() => {
   checkAuth()
   loadOrders()
-  // 延迟请求通知权限，避免页面加载时立即弹窗
-  setTimeout(() => {
-    requestNotificationPermission()
-  }, 1000)
-  // 每30秒检查一次新订单
-  orderCheckTimer = setInterval(checkNewOrders, 30000)
-  // 2秒后做首次检查（避免与 loadOrders 冲突）
+  // 初始化通知权限状态（不自动请求）
+  if ('Notification' in window) {
+    notificationPermission.value = Notification.permission
+  }
+  // 3秒后做首次检查（避开 loadOrders 加载时间）
   setTimeout(() => {
     checkNewOrders()
-  }, 2000)
+  }, 3000)
+  // 每15秒检查一次新订单
+  orderCheckTimer = setInterval(checkNewOrders, 15000)
 })
 
 onUnmounted(() => {
