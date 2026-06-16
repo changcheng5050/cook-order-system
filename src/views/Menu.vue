@@ -282,7 +282,8 @@
     <div v-if="showDetail" class="modal-mask" @click.self="showDetail = false">
       <div class="modal-box detail-modal">
         <button class="detail-close-x" @click="showDetail = false">✕</button>
-        <img v-if="detailDish.image_url" :src="detailDish.image_url" class="detail-img" />
+        <div class="detail-body">
+          <img v-if="detailDish.image_url" :src="detailDish.image_url" class="detail-img" />
         <div v-else class="detail-img-ph"></div>
         <h2>{{ detailDish.name }}</h2>
         <p>分类：{{ detailDish.category }} | {{ detailDish.temperature }}</p>
@@ -301,6 +302,7 @@
           <button class="btn-close" @click="showDetail = false">关闭</button>
           <button v-if="!isInCart(detailDish.id)" class="btn-add-from-detail" @click="addToCartAndClose(detailDish)">加入餐桌</button>
           <button v-else class="btn-added-from-detail" @click="removeFromCart(detailDish.id); showDetail = false">已加入 ✓ 移除</button>
+        </div>
         </div>
       </div>
     </div>
@@ -323,7 +325,7 @@ import { supabase } from '../lib/supabase'
 import { useCart } from '../lib/cart'
 
 const settings = inject('shopSettings')
-const version = ref('v2.2.1')  // v2.2.1: 时间选择器修复 + 订单备注默认提示 + 详情页右上角关闭叉
+const version = ref('v2.2.2')  // v2.2.2: 修复✕按钮随滚动、时间选择器出格
 
 // Logo 图片加载失败时，清除 url 让默认图标显示
 function onLogoError() {
@@ -888,12 +890,16 @@ function formatDate(dateStr) {
   background: #f0faf4;
   border: 1.5px solid #00a870;
   border-radius: 8px;
+  overflow: hidden;
 }
 .expected-time-section label { font-size: 13px; font-weight: 500; display: block; margin-bottom: 6px; color: #00a870; }
 .required { color: #e55a2b; }
 .time-input {
   width: 100%; padding: 8px 10px; border: 1px solid #00a870; border-radius: 8px;
   font-size: 14px; box-sizing: border-box; max-width: 100%; min-width: 0;
+}
+@media (max-width: 480px) {
+  .time-input { max-width: 220px; }
 }
 .order-note-section { margin-top: 12px; }
 .order-note-section label { font-size: 13px; font-weight: 500; display: block; margin-bottom: 4px; }
@@ -1030,7 +1036,8 @@ function formatDate(dateStr) {
 .detail-note-full { font-size: 12px; color: var(--text-secondary); margin-top: 6px; background: #f9f9f9; padding: 6px; border-radius: 6px; }
 
 /* 菜品详情弹窗 */
-.detail-modal { border-radius: 16px; max-height: 85vh; overflow-y: auto; margin: 20px auto; width: 90%; max-width: 420px; position: relative; }
+.detail-modal { border-radius: 16px; overflow: hidden; margin: 20px auto; width: 90%; max-width: 420px; position: relative; }
+.detail-body { max-height: 85vh; overflow-y: auto; padding: 16px; padding-top: 45px; }
 /* 正方形 + 等比例完整显示 */
 .detail-img {
   width: 100%;
