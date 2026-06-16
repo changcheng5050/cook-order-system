@@ -298,7 +298,7 @@ import { supabase } from '../lib/supabase'
 import { useCart } from '../lib/cart'
 
 const settings = inject('shopSettings')
-const version = ref('v2.1.2')  // v2.1.2 release: fix submit lock + notification
+const version = ref('v2.1.3')  // v2.1.3 release: optimize sort save speed
 
 // Logo 图片加载失败时，清除 url 让默认图标显示
 function onLogoError() {

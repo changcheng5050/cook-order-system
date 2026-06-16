@@ -7,7 +7,7 @@
         <button class="btn-nav" @click="$router.push('/admin/orders')">订单</button>
         <button class="btn-settings" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
-        <span class="version-badge">v2.1.2</span>
+        <span class="version-badge">v2.1.3</span>
       </div>
     </header>
 
@@ -25,7 +25,9 @@
         <option value="inactive">已下架</option>
       </select>
       <button v-if="!sortMode" class="btn-sort" @click="enterSortMode">排序</button>
-      <button v-else class="btn-save-sort" @click="saveSort">保存排序</button>
+      <button v-else class="btn-save-sort" @click="saveSort" :disabled="savingSort">
+        {{ savingSort ? '保存中...' : '保存排序' }}
+      </button>
       <button v-if="sortMode" class="btn-cancel-sort" @click="cancelSort">取消</button>
     </div>
 
@@ -798,6 +800,7 @@ function moveToPosition(dish, newPosStr) {
 
 // ========== 菜品排序功能 ==========
 let originalOrder = []  // 保存原始顺序，用于取消恢复
+const savingSort = ref(false)  // 正在保存排序中
 
 function enterSortMode() {
   originalOrder = dishes.value.map(d => d.id)
@@ -831,23 +834,27 @@ function moveDish(idx, dir) {
 }
 
 async function saveSort() {
+  if (savingSort.value) return  // 防止重复点击
+  savingSort.value = true
   try {
     // 按当前显示顺序，重新设置 sort_order（1, 2, 3...）
     const updates = dishes.value.map((d, idx) => ({
       id: d.id,
       sort_order: idx + 1
     }))
-    // 逐个更新（Supabase 不支持批量 update 不同 id 的不同值）
-    for (const u of updates) {
-      const { error } = await supabase.from('dishes').update({ sort_order: u.sort_order }).eq('id', u.id)
-      if (error) throw error
-    }
+    // 一次性批量 upsert（1 次请求搞定所有菜品，速度提升 10 倍以上）
+    const { error } = await supabase
+      .from('dishes')
+      .upsert(updates, { onConflict: 'id' })
+    if (error) throw error
     alert('排序已保存！')
     sortMode.value = false
     loadDishes()
   } catch (err) {
     console.error('保存排序失败：', err)
     alert('保存排序失败：' + (err.message || err))
+  } finally {
+    savingSort.value = false
   }
 }
 
