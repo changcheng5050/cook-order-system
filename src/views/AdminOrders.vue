@@ -97,6 +97,7 @@ const batchMode = ref(false)       // 是否批量模式
 const selectedOrders = ref([])     // 选中的订单ID列表
 const notificationPermission = ref('default')  // 通知权限状态
 const lastOrderCount = ref(0)       // 上次检查的订单数量
+let orderCheckTimer = null          // 轮询定时器
 
 const filteredOrders = computed(() => {
   let list = orders.value
@@ -107,11 +108,6 @@ const filteredOrders = computed(() => {
     list = list.filter(o => o.created_at.startsWith(dateFilter.value))
   }
   return list
-})
-
-onMounted(() => {
-  checkAuth()
-  loadOrders()
 })
 
 async function checkAuth() {
@@ -198,62 +194,6 @@ async function batchDelete() {
   batchMode.value = false
 }
 
-// ===== 浏览器通知功能 =====
-async function requestNotificationPermission() {
-  if (!('Notification' in window)) {
-    console.log('此浏览器不支持通知')
-    return
-  }
-  if (Notification.permission === 'granted') {
-    notificationPermission.value = 'granted'
-  } else if (Notification.permission !== 'denied') {
-    const result = await Notification.requestPermission()
-    notificationPermission.value = result
-  } else {
-    notificationPermission.value = 'denied'
-  }
-}
-
-// 检查新订单并发送通知
-let orderCheckTimer = null
-async function checkNewOrders() {
-  const { data, error } = await supabase
-    .from('orders')
-    .select('id, customer_name, dishes', { count: 'exact' })
-    .order('created_at', { ascending: false })
-  if (error || !data) return
-  const currentCount = data.length
-  if (lastOrderCount.value > 0 && currentCount > lastOrderCount.value) {
-    // 有新订单！
-    const newOrders = data.slice(0, currentCount - lastOrderCount.value)
-    newOrders.forEach(order => {
-      if (Notification.permission === 'granted') {
-        new Notification('🔔 新订单来了！', {
-          body: `${order.customer_name} 点了 ${order.dishes.length} 道菜`,
-          icon: '/favicon.png',
-          tag: order.id
-        })
-      }
-    })
-  }
-  lastOrderCount.value = currentCount
-}
-
-onMounted(() => {
-  checkAuth()
-  loadOrders()
-  requestNotificationPermission()
-  // 每30秒检查一次新订单
-  orderCheckTimer = setInterval(checkNewOrders, 30000)
-  // 立即检查一次
-  checkNewOrders()
-})
-
-import { onUnmounted } from 'vue'
-onUnmounted(() => {
-  if (orderCheckTimer) clearInterval(orderCheckTimer)
-})
-
 async function deleteOrder(id) {
   if (!confirm('确定要删除这个订单吗？删除后不可恢复。')) return
   const { error } = await supabase.from('orders').delete().eq('id', id)
@@ -265,6 +205,76 @@ async function deleteOrder(id) {
   orders.value = orders.value.filter(o => o.id !== id)
   expandedOrder.value = null
 }
+
+// ===== 浏览器通知功能 =====
+async function requestNotificationPermission() {
+  if (!('Notification' in window)) {
+    console.log('此浏览器不支持通知')
+    return
+  }
+  if (Notification.permission === 'granted') {
+    notificationPermission.value = 'granted'
+  } else if (Notification.permission !== 'denied') {
+    try {
+      const result = await Notification.requestPermission()
+      notificationPermission.value = result
+    } catch (e) {
+      console.log('请求通知权限失败', e)
+    }
+  } else {
+    notificationPermission.value = 'denied'
+  }
+}
+
+// 检查新订单并发送通知
+async function checkNewOrders() {
+  try {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('id, customer_name, dishes')
+      .order('created_at', { ascending: false })
+    if (error || !data) return
+    const currentCount = data.length
+    if (lastOrderCount.value > 0 && currentCount > lastOrderCount.value) {
+      // 有新订单！
+      const newOrders = data.slice(0, currentCount - lastOrderCount.value)
+      newOrders.forEach(order => {
+        if (Notification.permission === 'granted') {
+          try {
+            new Notification('🔔 新订单来了！', {
+              body: `${order.customer_name} 点了 ${order.dishes.length} 道菜`,
+              tag: order.id
+            })
+          } catch (e) {
+            console.log('发送通知失败', e)
+          }
+        }
+      })
+    }
+    lastOrderCount.value = currentCount
+  } catch (e) {
+    console.log('检查新订单失败', e)
+  }
+}
+
+onMounted(() => {
+  checkAuth()
+  loadOrders()
+  // 延迟请求通知权限，避免页面加载时立即弹窗
+  setTimeout(() => {
+    requestNotificationPermission()
+  }, 1000)
+  // 每30秒检查一次新订单
+  orderCheckTimer = setInterval(checkNewOrders, 30000)
+  // 2秒后做首次检查（避免与 loadOrders 冲突）
+  setTimeout(() => {
+    checkNewOrders()
+  }, 2000)
+})
+
+onUnmounted(() => {
+  if (orderCheckTimer) clearInterval(orderCheckTimer)
+})
 
 function formatDate(dateStr) {
   const d = new Date(dateStr)
@@ -311,7 +321,7 @@ async function logout() {
   padding: 12px 16px; background: var(--primary); color: #fff;
 }
 .admin-header h1 { font-size: 16px; }
-.header-actions { display: flex; gap: 6px; align-items: center; }
+.header-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .header-actions button {
   padding: 4px 10px; border-radius: 6px; font-size: 12px;
   color: #fff; background: rgba(255,255,255,0.2); border: none;
@@ -337,6 +347,12 @@ async function logout() {
   background: rgba(0,0,0,0.18); padding: 2px 8px; border-radius: 10px;
   white-space: nowrap;
 }
+.header-actions .btn-batch {
+  padding: 4px 10px; border-radius: 6px; font-size: 12px;
+  color: #fff; background: rgba(255,255,255,0.2); border: none;
+  white-space: nowrap;
+}
+.header-actions .btn-batch:hover { background: rgba(255,255,255,0.35); }
 
 .toolbar {
   display: flex; gap: 8px; padding: 10px 16px; background: #fff;
@@ -434,15 +450,7 @@ async function logout() {
   color: #a8071a;
 }
 
-/* 批量删除 */
-.btn-batch {
-  padding: 4px 10px; border-radius: 6px; font-size: 12px;
-  color: #fff; background: rgba(255,255,255,0.2); border: none;
-  white-space: nowrap;
-}
-.btn-batch:hover { background: rgba(255,255,255,0.35); }
-
-.order-check-box {
+.order-checkbox {
   width: 18px; height: 18px; flex-shrink: 0;
   accent-color: var(--primary);
   cursor: pointer;
