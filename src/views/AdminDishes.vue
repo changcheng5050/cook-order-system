@@ -7,7 +7,7 @@
         <button class="btn-nav" @click="$router.push('/admin/orders')">订单</button>
         <button class="btn-settings" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
-        <span class="version-badge">v2.0.13</span>
+        <span class="version-badge">v2.0.14</span>
       </div>
     </header>
 
@@ -81,30 +81,34 @@
           </span>
         </div>
 
-        <label>食材 *（名称和用量，可拖拽排序）</label>
+        <label>食材 *（名称和用量，可排序）</label>
         <div v-for="(ing, idx) in form.ingredients" :key="'ing-'+idx"
-          class="kv-row drag-row"
+          class="kv-row reorder-row"
           draggable="true"
           @dragstart="onDragStart(idx, 'ing')"
           @dragover.prevent="onDragOver(idx, 'ing')"
           @drop="onDrop(idx, 'ing')"
         >
           <span class="drag-handle" title="拖拽排序">⠿</span>
+          <button class="btn-move" @click="moveRow('ing', idx, -1)" :disabled="idx === 0" title="上移">↑</button>
+          <button class="btn-move" @click="moveRow('ing', idx, 1)" :disabled="idx === form.ingredients.length - 1" title="下移">↓</button>
           <input v-model="ing.name" placeholder="食材名" list="ingredient-list" />
           <input v-model="ing.amount" placeholder="用量" />
           <button @click="form.ingredients.splice(idx, 1)">✕</button>
         </div>
         <button class="btn-add-row" @click="form.ingredients.push({name:'',amount:'适量'})">+ 添加食材</button>
 
-        <label>调料 *（名称和用量，可拖拽排序）</label>
+        <label>调料 *（名称和用量，可排序）</label>
         <div v-for="(s, idx) in form.seasonings" :key="'s-'+idx"
-          class="kv-row drag-row"
+          class="kv-row reorder-row"
           draggable="true"
           @dragstart="onDragStart(idx, 'sea')"
           @dragover.prevent="onDragOver(idx, 'sea')"
           @drop="onDrop(idx, 'sea')"
         >
           <span class="drag-handle" title="拖拽排序">⠿</span>
+          <button class="btn-move" @click="moveRow('sea', idx, -1)" :disabled="idx === 0" title="上移">↑</button>
+          <button class="btn-move" @click="moveRow('sea', idx, 1)" :disabled="idx === form.seasonings.length - 1" title="下移">↓</button>
           <input v-model="s.name" placeholder="调料名" list="seasoning-list" />
           <input v-model="s.amount" placeholder="用量" />
           <button @click="form.seasonings.splice(idx, 1)">✕</button>
@@ -159,7 +163,7 @@
         <div class="crop-toolbar">
           <button @click="zoomCrop(0.88)">缩小</button>
           <button @click="zoomCrop(1.12)">放大</button>
-          <span class="crop-size-info">裁剪输出：{{ cropOutW }} × {{ cropOutH }} px</span>
+          <span class="crop-size-info">裁剪输出：{{ cropOutW }} × {{ cropOutH }} px（原图尺寸）</span>
         </div>
         <div class="modal-actions">
           <button @click="cancelCrop">取消</button>
@@ -280,6 +284,15 @@ async function loadSuggestions() {
   seasoningSuggestions.value = Array.from(seaSet)
 }
 
+// ========== 上下移动排序（手机/电脑都能用）==========
+function moveRow(type, idx, dir) {
+  const list = type === 'ing' ? form.value.ingredients : form.value.seasonings
+  const newIdx = idx + dir
+  if (newIdx < 0 || newIdx >= list.length) return
+  const [item] = list.splice(idx, 1)
+  list.splice(newIdx, 0, item)
+}
+
 function openAddModal() {
   isEdit.value = false
   editingId.value = null
@@ -349,7 +362,7 @@ function onDrop(idx, type) {
   dragState = { idx: -1, type: '' }
 }
 
-// ========== 图片选择 → 裁剪（可选） ==========
+// ========== 图片选择 → 裁剪（可选）==========
 function onImageSelected(e) {
   const file = e.target.files[0]
   if (!file) return
@@ -535,33 +548,37 @@ async function skipCrop() {
   pendingFile = null
 }
 
-// ========== 确认裁剪 → 用原图坐标裁剪 → 压缩上传 ==========
+// ========== 确认裁剪 → 原图坐标裁剪 → 一次性压缩上传 ==========
 async function cropAndUpload() {
   if (!cropImageObj) return
   uploading.value = true
 
   try {
     const cb = cropBox.value
+    // 将裁剪框坐标映射回原图坐标
     const sx = (cb.x - imgOffsetX) / imgScale
     const sy = (cb.y - imgOffsetY) / imgScale
     const sw = cb.w / imgScale
     const sh = cb.h / imgScale
 
+    // 在原图分辨率上裁剪，然后直接压缩输出（只压缩一次）
     const outW = Math.max(1, Math.round(sw))
     const outH = Math.max(1, Math.round(sh))
+
+    // 第一步：在原图分辨率上裁剪
     const tmpCanvas = document.createElement('canvas')
     tmpCanvas.width = outW
     tmpCanvas.height = outH
-    const ctx = tmpCanvas.getContext('2d')
-    ctx.drawImage(cropImageObj, sx, sy, sw, sh, 0, 0, outW, outH)
+    const tmpCtx = tmpCanvas.getContext('2d')
+    tmpCtx.drawImage(cropImageObj, sx, sy, sw, sh, 0, 0, outW, outH)
 
+    // 第二步：直接压缩到目标尺寸（只执行一次，避免双重压缩）
     tmpCanvas.toBlob(async (blob) => {
       if (!blob) { alert('裁剪失败'); uploading.value = false; return }
       try {
-        const compressedBlob = await compressCroppedBlob(blob)
         const ext = pendingFile ? (pendingFile.name.split('.').pop() || 'jpg') : 'jpg'
         const fileName = `dish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
-        const { error } = await supabase.storage.from('dish-images').upload(fileName, compressedBlob)
+        const { error } = await supabase.storage.from('dish-images').upload(fileName, blob)
         if (!error) {
           const { data: { publicUrl } } = supabase.storage.from('dish-images').getPublicUrl(fileName)
           form.value.image_url = publicUrl
@@ -576,7 +593,7 @@ async function cropAndUpload() {
       showCropper.value = false
       cropImageObj = null
       pendingFile = null
-    }, 'image/jpeg', 0.92)
+    }, 'image/jpeg', 0.85)
   } catch (err) {
     console.error(err)
     alert('裁剪出错')
@@ -584,7 +601,7 @@ async function cropAndUpload() {
   }
 }
 
-// 压缩原图（跳过裁剪时使用，最大宽度1200px，质量0.8）
+// 压缩原图（跳过裁剪时使用，最大宽度1600px，质量0.85）
 function compressImage(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -592,7 +609,7 @@ function compressImage(file) {
       const img = new Image()
       img.onload = () => {
         let { width, height } = img
-        const MAX_W = 1200
+        const MAX_W = 1600
         if (width > MAX_W) {
           height = Math.round(height * MAX_W / width)
           width = MAX_W
@@ -601,40 +618,13 @@ function compressImage(file) {
         canvas.width = width
         canvas.height = height
         canvas.getContext('2d').drawImage(img, 0, 0, width, height)
-        canvas.toBlob((b) => { resolve(b || file) }, 'image/jpeg', 0.8)
+        canvas.toBlob((b) => { resolve(b || file) }, 'image/jpeg', 0.85)
       }
       img.onerror = reject
       img.src = e.target.result
     }
     reader.onerror = reject
     reader.readAsDataURL(file)
-  })
-}
-
-// 裁剪后的压缩（只执行一次，质量 0.8）
-function compressCroppedBlob(blob) {
-  return new Promise((resolve) => {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const img = new Image()
-      img.onload = () => {
-        let { width, height } = img
-        const MAX_W = 1200
-        if (width > MAX_W) {
-          height = Math.round(height * MAX_W / width)
-          width = MAX_W
-        }
-        const canvas = document.createElement('canvas')
-        canvas.width = width
-        canvas.height = height
-        canvas.getContext('2d').drawImage(img, 0, 0, width, height)
-        canvas.toBlob((b) => { resolve(b || blob) }, 'image/jpeg', 0.8)
-      }
-      img.onerror = () => resolve(blob)
-      img.src = e.target.result
-    }
-    reader.onerror = () => resolve(blob)
-    reader.readAsDataURL(blob)
   })
 }
 
@@ -786,14 +776,25 @@ async function logout() {
 .tags-edit { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
 .tags-edit .tag span { cursor: pointer; margin-left: 2px; }
 .kv-row { display: flex; gap: 6px; margin-bottom: 4px; align-items: center; }
-.drag-row { cursor: grab; }
-.drag-row:active { cursor: grabbing; }
+.reorder-row { cursor: grab; }
+.reorder-row:active { cursor: grabbing; }
 .drag-handle {
   font-size: 16px; color: #bbb; cursor: grab; flex-shrink: 0;
   display: flex; align-items: center; padding: 0 2px;
   user-select: none;
 }
-.drag-row:hover .drag-handle { color: #888; }
+.reorder-row:hover .drag-handle { color: #888; }
+
+/* 上下移动按钮（手机/电脑都能用） */
+.btn-move {
+  width: 22px; height: 22px; border-radius: 4px;
+  background: #f0f0f0; color: #666; font-size: 13px; font-weight: bold;
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  border: 1px solid #ddd; cursor: pointer;
+}
+.btn-move:hover:not(:disabled) { background: #e0e0e0; color: #333; }
+.btn-move:disabled { opacity: 0.3; cursor: not-allowed; }
+
 .kv-row input { flex: 1; }
 .kv-row button {
   width: 24px; height: 24px; border-radius: 50%; background: #f0f0f0;

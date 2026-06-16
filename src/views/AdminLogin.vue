@@ -24,7 +24,7 @@
       </div>
 
       <p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
-      <p class="version-text">v2.0.13</p>
+      <p class="version-text">v2.0.14</p>
     </div>
   </div>
 </template>
