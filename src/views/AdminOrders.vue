@@ -155,9 +155,10 @@ async function deleteOrder(id) {
   if (!confirm('确定要删除这个订单吗？删除后不可恢复。')) return
   const { error } = await supabase.from('orders').delete().eq('id', id)
   if (error) {
-    alert('删除失败：' + error.message)
+    alert('删除失败：' + error.message + '\n\n请确认 Supabase 后台已开启 orders 表的 DELETE 权限（在 Authentication → Policies 中添加删除策略）')
     return
   }
+  alert('删除成功！')
   orders.value = orders.value.filter(o => o.id !== id)
   expandedOrder.value = null
 }

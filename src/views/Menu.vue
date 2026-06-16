@@ -80,7 +80,7 @@
       <!-- 底部购物车栏 -->
       <div v-if="cartItems.length > 0" class="cart-bar" @click="showCart = true">
         <div class="cart-icon">
-          🛒
+          🍽️
           <span class="cart-count">{{ cartItems.length }}</span>
         </div>
         <div class="cart-info">
