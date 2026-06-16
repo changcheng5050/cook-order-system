@@ -7,7 +7,7 @@
         <button class="btn-nav" @click="$router.push('/admin/orders')">订单</button>
         <button class="btn-settings" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
-        <span class="version-badge">v2.1.4</span>
+        <span class="version-badge">v2.1.5</span>
       </div>
     </header>
 
@@ -174,7 +174,7 @@
     <div v-if="showCropper" class="modal-mask" @click.self="cancelCrop">
       <div class="modal-box cropper-modal">
         <h3>裁剪图片（可选）</h3>
-        <p class="crop-hint">滚轮缩放 · 拖动裁剪框移动 · 拖角调整大小</p>
+        <p class="crop-hint">拖动裁剪框移动 · 拖动下方滑块调整大小</p>
         <div
           ref="cropContainerRef"
           class="crop-canvas-wrap"
@@ -198,9 +198,9 @@
           </div>
         </div>
         <div class="crop-toolbar">
-          <button @click="zoomCrop(0.88)">缩小</button>
-          <button @click="zoomCrop(1.12)">放大</button>
-          <span class="crop-size-info">裁剪输出：{{ cropOutW }} × {{ cropOutH }} px（原图尺寸）</span>
+          <span class="crop-size-label">裁剪大小</span>
+          <input type="range" v-model.number="cropSizeRatio" min="0.2" max="1.0" step="0.05" @input="onCropSizeChange()" class="crop-slider" />
+          <span class="crop-size-info">{{ Math.round(cropSizeRatio * 100) }}%</span>
         </div>
         <div class="modal-actions">
           <button @click="cancelCrop">取消</button>
@@ -272,6 +272,7 @@ let cropImageNaturalH = 0
 const cropBox = ref({ x: 20, y: 20, w: 200, h: 150 })
 const cropOutW = ref(0)
 const cropOutH = ref(0)
+const cropSizeRatio = ref(0.85)  // 正方形裁剪框大小比例（0.2~1.0）
 let cropDrag = null
 let imgScale = 1
 let imgOffsetX = 0
@@ -437,16 +438,15 @@ function initCrop() {
     imgOffsetX = (containerW - cropImageNaturalW * scale) / 2
     imgOffsetY = (containerH - cropImageNaturalH * scale) / 2
 
-    // 裁剪框初始占显示图片的 85%
-    let cw = cropImageNaturalW * scale * 0.85
-    let ch = cropImageNaturalH * scale * 0.85
-    if (cw > containerW - 40) cw = containerW - 40
-    if (ch > containerH - 40) ch = containerH - 40
+    // 裁剪框初始为正方形，占显示图片的指定比例
+    let size = Math.min(cropImageNaturalW * scale, cropImageNaturalH * scale) * cropSizeRatio.value
+    if (size > containerW - 40) size = containerW - 40
+    if (size > containerH - 40) size = containerH - 40
     cropBox.value = {
-      x: (containerW - cw) / 2,
-      y: (containerH - ch) / 2,
-      w: cw,
-      h: ch
+      x: (containerW - size) / 2,
+      y: (containerH - size) / 2,
+      w: size,
+      h: size
     }
     updateCropOutSize()
     drawCropCanvas()
@@ -475,6 +475,28 @@ function updateCropOutSize() {
   const oh = Math.round(cb.h / imgScale)
   cropOutW.value = ow
   cropOutH.value = oh
+}
+
+// 滑块调整正方形裁剪框大小
+function onCropSizeChange() {
+  const minSize = 20
+  const maxSize = Math.min(containerW - 20, containerH - 20)
+  let newSize = Math.round(maxSize * cropSizeRatio.value)
+  if (newSize < minSize) newSize = minSize
+  // 居中缩放
+  const cx = cropBox.value.x + cropBox.value.w / 2
+  const cy = cropBox.value.y + cropBox.value.h / 2
+  let nx = cx - newSize / 2
+  let ny = cy - newSize / 2
+  if (nx < 0) nx = 0
+  if (ny < 0) ny = 0
+  if (nx + newSize > containerW) nx = containerW - newSize
+  if (ny + newSize > containerH) ny = containerH - newSize
+  cropBox.value.w = newSize
+  cropBox.value.h = newSize
+  cropBox.value.x = nx
+  cropBox.value.y = ny
+  updateCropOutSize()
 }
 
 // 缩放
@@ -533,25 +555,39 @@ function handleResize(dx, dy) {
   const s = cropDrag
   const minSize = 20
   if (cropDrag.type === 'resize-se') {
-    cropBox.value.w = clamp(s.w + dx, minSize, containerW - s.x)
-    cropBox.value.h = clamp(s.h + dy, minSize, containerH - s.y)
+    // 右下角：宽度变化，高度跟随宽度
+    const newW = clamp(s.w + dx, minSize, containerW - s.x)
+    cropBox.value.w = newW
+    cropBox.value.h = newW
   } else if (cropDrag.type === 'resize-sw') {
-    const newW = s.w - dx
-    const newX = s.x + dx
-    if (newW >= minSize && newX >= 0) { cropBox.value.w = newW; cropBox.value.x = newX }
-    cropBox.value.h = clamp(s.h + dy, minSize, containerH - s.y)
+    // 左下角：宽度变化，x 同步调整，高度跟随宽度
+    const newW = clamp(s.w - dx, minSize, s.x + s.w)
+    const newX = s.x + (s.w - newW)
+    if (newW >= minSize && newX >= 0) {
+      cropBox.value.w = newW
+      cropBox.value.h = newW
+      cropBox.value.x = newX
+    }
   } else if (cropDrag.type === 'resize-ne') {
-    cropBox.value.w = clamp(s.w + dx, minSize, containerW - s.x)
-    const newH = s.h - dy
-    const newY = s.y + dy
-    if (newH >= minSize && newY >= 0) { cropBox.value.h = newH; cropBox.value.y = newY }
+    // 右上角：宽度变化，y 同步调整，高度跟随宽度
+    const newW = clamp(s.w + dx, minSize, containerW - s.x)
+    const newY = s.y + (s.h - newW)
+    if (newW >= minSize && newY >= 0) {
+      cropBox.value.w = newW
+      cropBox.value.h = newW
+      cropBox.value.y = newY
+    }
   } else if (cropDrag.type === 'resize-nw') {
-    const newW = s.w - dx
-    const newX = s.x + dx
-    const newH = s.h - dy
-    const newY = s.y + dy
-    if (newW >= minSize && newX >= 0) { cropBox.value.w = newW; cropBox.value.x = newX }
-    if (newH >= minSize && newY >= 0) { cropBox.value.h = newH; cropBox.value.y = newY }
+    // 左上角：宽度变化，x 和 y 同步调整，高度跟随宽度
+    const newW = clamp(s.w - dx, minSize, s.x + s.w)
+    const newX = s.x + (s.w - newW)
+    const newY = s.y + (s.h - newW)
+    if (newW >= minSize && newX >= 0 && newY >= 0) {
+      cropBox.value.w = newW
+      cropBox.value.h = newW
+      cropBox.value.x = newX
+      cropBox.value.y = newY
+    }
   }
 }
 
@@ -1044,15 +1080,22 @@ async function logout() {
 }
 .crop-toolbar {
   display: flex; align-items: center; gap: 8px; margin-top: 8px;
+  background: #f7f8fa; border-radius: 8px; padding: 8px 12px;
+}
+.crop-size-label {
+  font-size: 12px; color: #666; white-space: nowrap;
+}
+.crop-slider {
+  flex: 1; height: 4px; cursor: pointer;
+}
+.crop-size-info {
+  font-size: 12px; color: #888; white-space: nowrap; min-width: 36px; text-align: right;
 }
 .crop-toolbar button {
   padding: 4px 12px; border-radius: 6px; font-size: 12px;
   background: #f0f0f0; border: 1px solid #ddd; cursor: pointer;
 }
 .crop-toolbar button:hover { background: #e0e0e0; }
-.crop-size-info {
-  margin-left: auto; font-size: 12px; color: #888;
-}
 .btn-skip-crop {
   padding: 10px; border-radius: 8px; font-size: 13px;
   background: #fff7e6; color: #d46b08; border: 1px solid #ffd591;

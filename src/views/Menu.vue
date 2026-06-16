@@ -312,7 +312,7 @@ import { supabase } from '../lib/supabase'
 import { useCart } from '../lib/cart'
 
 const settings = inject('shopSettings')
-const version = ref('v2.1.4')  // v2.1.4 release: customer validation + square image
+const version = ref('v2.1.5')  // v2.1.5: square crop + slider + order customer filter
 
 // Logo 图片加载失败时，清除 url 让默认图标显示
 function onLogoError() {

@@ -11,15 +11,19 @@
         <button class="btn-batch" @click="toggleBatch">{{ batchMode ? '取消' : '批量删除' }}</button>
         <button v-if="notificationPermission !== 'granted'" class="btn-notify" @click="requestNotificationPermission">🔔 开启通知</button>
         <span v-else class="notify-active">🔔 通知已开启</span>
-        <span class="version-badge">v2.1.4</span>
+        <span class="version-badge">v2.1.5</span>
       </div>
     </header>
 
     <!-- 筛选 -->
     <div class="toolbar">
       <input v-model="searchName" placeholder="搜索客户姓名" class="search-input" />
+      <select v-model="customerFilter" class="filter-select">
+        <option value="">全部客户</option>
+        <option v-for="name in customerOptions" :key="name" :value="name">{{ name }}</option>
+      </select>
       <input v-model="dateFilter" type="date" class="date-input" />
-      <button v-if="dateFilter" @click="dateFilter = ''" class="btn-clear">清除日期</button>
+      <button v-if="dateFilter || customerFilter" @click="clearFilters" class="btn-clear">清除筛选</button>
     </div>
 
     <div v-if="filteredOrders.length === 0" class="empty-tip">暂无订单</div>
@@ -92,6 +96,8 @@ const router = useRouter()
 const orders = ref([])
 const searchName = ref('')
 const dateFilter = ref('')
+const customerFilter = ref('')  // 当前选中的客户名
+const customerOptions = ref([]) // 所有客户名列表
 const expandedOrder = ref(null)
 const batchMode = ref(false)       // 是否批量模式
 const selectedOrders = ref([])     // 选中的订单ID列表
@@ -103,6 +109,10 @@ const filteredOrders = computed(() => {
   let list = orders.value
   if (searchName.value) {
     list = list.filter(o => o.customer_name.includes(searchName.value.trim()))
+  }
+  // 按客户名下拉筛选
+  if (customerFilter.value) {
+    list = list.filter(o => o.customer_name === customerFilter.value)
   }
   if (dateFilter.value) {
     list = list.filter(o => o.created_at.startsWith(dateFilter.value))
@@ -159,6 +169,10 @@ async function loadOrders() {
       }
     })
   }))
+  // 收集所有不重复的客户名
+  const nameSet = new Set()
+  ;(orderData || []).forEach(o => { if (o.customer_name) nameSet.add(o.customer_name) })
+  customerOptions.value = Array.from(nameSet).sort()
 }
 
 function toggleOrder(id) {
@@ -178,6 +192,13 @@ function toggleSelectOrder(id) {
   } else {
     selectedOrders.value.splice(idx, 1)
   }
+}
+
+// 清除所有筛选条件
+function clearFilters() {
+  searchName.value = ''
+  customerFilter.value = ''
+  dateFilter.value = ''
 }
 
 async function batchDelete() {
@@ -385,6 +406,10 @@ async function logout() {
 .search-input {
   flex: 1; min-width: 120px; padding: 6px 10px; border: 1px solid #ddd;
   border-radius: 8px; font-size: 13px;
+}
+.filter-select {
+  padding: 6px 8px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px;
+  min-width: 100px;
 }
 .date-input {
   padding: 6px 8px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px;
