@@ -8,6 +8,10 @@
       <div v-if="!isSignup" class="form-group">
         <input v-model="email" type="email" placeholder="邮箱" />
         <input v-model="password" type="password" placeholder="密码" @keyup.enter="login" />
+        <label class="remember-row">
+          <input type="checkbox" v-model="rememberMe" />
+          <span>记住登录信息（下次自动填充）</span>
+        </label>
         <button @click="login" :disabled="loading">{{ loading ? '登录中...' : '登录' }}</button>
         <p class="switch-link" @click="isSignup = true">还没有账号？点击注册</p>
       </div>
@@ -20,13 +24,13 @@
       </div>
 
       <p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
-      <p class="version-text">v2.0.0</p>
+      <p class="version-text">v2.0.7</p>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, inject } from 'vue'
+import { ref, inject, onMounted } from 'vue'
 import { supabase } from '../lib/supabase'
 import { useRouter } from 'vue-router'
 
@@ -38,6 +42,18 @@ const password = ref('')
 const loading = ref(false)
 const errorMsg = ref('')
 const isSignup = ref(false)
+const rememberMe = ref(false)
+
+onMounted(() => {
+  // 尝试读取保存的登录信息
+  const savedEmail = localStorage.getItem('admin_remember_email')
+  const savedPwd = localStorage.getItem('admin_remember_password')
+  if (savedEmail) {
+    email.value = savedEmail
+    password.value = savedPwd || ''
+    rememberMe.value = true
+  }
+})
 
 async function login() {
   if (!email.value || !password.value) {
@@ -54,6 +70,14 @@ async function login() {
   if (error) {
     errorMsg.value = error.message
   } else {
+    // 根据选择是否记住密码
+    if (rememberMe.value) {
+      localStorage.setItem('admin_remember_email', email.value)
+      localStorage.setItem('admin_remember_password', password.value)
+    } else {
+      localStorage.removeItem('admin_remember_email')
+      localStorage.removeItem('admin_remember_password')
+    }
     router.push('/admin/dishes')
   }
 }
@@ -89,7 +113,7 @@ async function signup() {
   background: var(--bg);
 }
 .login-box {
-  background: #fff; border-radius: 16px; padding: 32px 24px; width: 320px;
+  background: #fff; border-radius: 16px; padding: 32px 24px; width: 340px;
   text-align: center; box-shadow: 0 2px 12px rgba(0,0,0,0.08);
 }
 .login-logo { width: 64px; height: 64px; border-radius: 50%; margin-bottom: 12px; object-fit: cover; }
@@ -98,6 +122,15 @@ async function signup() {
 .form-group { display: flex; flex-direction: column; gap: 10px; }
 .form-group input {
   padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;
+}
+.remember-row {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--text-secondary);
+  cursor: pointer; justify-content: flex-start;
+}
+.remember-row input[type="checkbox"] {
+  width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer;
+  padding: 0;
 }
 .form-group button {
   padding: 10px; background: var(--primary); color: #fff; border-radius: 8px;

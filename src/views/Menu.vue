@@ -112,11 +112,14 @@
         <div v-if="expandedOrderId === order.id" class="order-detail">
           <p><strong>菜品：</strong></p>
           <div v-for="item in order.dishes" :key="item.id" class="detail-dish-item">
-            <img v-if="item.image_url" :src="item.image_url" class="detail-dish-img" />
-            <div v-else class="detail-dish-ph"></div>
+            <img v-if="item.image_url" :src="item.image_url" class="detail-dish-img" @error="$event.target.style.display='none'" />
+            <div v-else class="detail-dish-ph">🍽️</div>
             <div class="detail-dish-info">
-              <span v-if="item.category" :class="['detail-cat-tag', 'cat-' + item.category]">{{ item.category }}</span>
-              <strong>{{ item.name }}</strong> · {{ item.cook_time }}分钟
+              <div class="detail-dish-name-row">
+                <span v-if="item.category" :class="['detail-cat-tag', 'cat-' + item.category]">{{ item.category }}</span>
+                <strong>{{ item.name }}</strong>
+              </div>
+              <span class="detail-cook-time">⏱ {{ item.cook_time }}分钟</span>
               <span v-if="item.customer_note" class="detail-note">（备注：{{ item.customer_note }}）</span>
             </div>
           </div>
@@ -289,7 +292,7 @@ import { supabase } from '../lib/supabase'
 import { useCart } from '../lib/cart'
 
 const settings = inject('shopSettings')
-const version = ref('v2.0.6')
+const version = ref('v2.0.7')
 
 // 页签状态
 const currentTab = ref('menu')
@@ -833,18 +836,24 @@ function orderAgain() {
   font-size: 13px;
 }
 .order-detail h4 { font-size: 13px; margin: 8px 0 4px; color: var(--primary); }
-.detail-dish-item { padding: 4px 0; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+.detail-dish-item { padding: 6px 0; font-size: 13px; display: flex; align-items: flex-start; gap: 10px; }
 .detail-cat-tag {
-  font-size: 10px; padding: 1px 6px; border-radius: 4px;
+  font-size: 10px; padding: 2px 7px; border-radius: 4px;
   font-weight: 500; color: #fff; flex-shrink: 0;
 }
 .detail-cat-tag.cat-荤菜 { background: rgba(229,57,53,0.82); }
 .detail-cat-tag.cat-素菜 { background: rgba(67,160,71,0.82); }
 .detail-cat-tag.cat-汤类 { background: rgba(30,136,229,0.82); }
 .detail-cat-tag.cat-粉面类 { background: rgba(245,124,0,0.82); }
-.detail-dish-img { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
-.detail-dish-ph { width: 36px; height: 36px; border-radius: 6px; background: #f0f0f0; flex-shrink: 0; }
+.detail-dish-img { width: 52px; height: 52px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+.detail-dish-ph {
+  width: 52px; height: 52px; border-radius: 8px; background: linear-gradient(135deg,#f5f5f0,#e8e8e0);
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+}
 .detail-dish-info { flex: 1; min-width: 0; }
+.detail-dish-name-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.detail-cook-time { font-size: 12px; color: var(--text-secondary); margin-left: 0; }
 .detail-note { font-size: 11px; color: #e55a2b; }
 .detail-total { font-weight: 500; margin-top: 6px; }
 .detail-note-full { font-size: 12px; color: var(--text-secondary); margin-top: 6px; background: #f9f9f9; padding: 6px; border-radius: 6px; }

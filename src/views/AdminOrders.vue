@@ -8,7 +8,7 @@
         <button class="btn-nav active-nav" @click="$router.push('/admin/orders')">订单</button>
         <button class="btn-settings" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
-        <span class="version-badge">v2.0.6</span>
+        <span class="version-badge">v2.0.7</span>
       </div>
     </header>
 
@@ -40,10 +40,13 @@
           <p v-if="order.customer_address" class="customer-info">地址：{{ order.customer_address }}</p>
           <h4>菜品：</h4>
           <div v-for="d in order.dishes" :key="d.id" class="detail-row">
-            <img v-if="d.image_url" :src="d.image_url" class="admin-detail-dish-img" />
-            <span v-if="d.category" :class="['detail-cat-tag', 'cat-' + d.category]">{{ d.category }}</span>
-            <span>{{ d.name }}（{{ d.cook_time }}分钟）</span>
-            <span v-if="d.customer_note" class="detail-note">{{ d.customer_note }}</span>
+            <img v-if="d.image_url" :src="d.image_url" class="admin-detail-dish-img" @error="$event.target.style.display='none';$event.target.nextElementSibling.style.display='flex'" />
+            <div v-else class="admin-dish-img-ph">🍽️</div>
+            <div class="detail-dish-text">
+              <span v-if="d.category" :class="['detail-cat-tag', 'cat-' + d.category]">{{ d.category }}</span>
+              <strong>{{ d.name }}</strong>（{{ d.cook_time }}分钟）
+              <span v-if="d.customer_note" class="detail-note">{{ d.customer_note }}</span>
+            </div>
           </div>
 
           <h4>食材汇总：</h4>
@@ -246,8 +249,15 @@ async function logout() {
 .order-detail h4 { font-size: 13px; margin: 8px 0 4px; color: var(--primary); }
 .customer-info { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
 
-.detail-row { padding: 4px 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.admin-detail-dish-img { width: 32px; height: 32px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
+.detail-row { padding: 5px 0; display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap; }
+.admin-detail-dish-img { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+.admin-dish-img-ph {
+  width: 44px; height: 44px; border-radius: 8px;
+  background: linear-gradient(135deg,#f5f5f0,#e8e8e0);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.detail-dish-text { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .detail-cat-tag {
   font-size: 10px; padding: 1px 7px; border-radius: 4px;
   font-weight: 500; color: #fff; flex-shrink: 0;

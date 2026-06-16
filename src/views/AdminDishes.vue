@@ -7,7 +7,7 @@
         <button class="btn-nav" @click="$router.push('/admin/orders')">订单</button>
         <button class="btn-settings" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
-        <span class="version-badge">v2.0.6</span>
+        <span class="version-badge">v2.0.7</span>
       </div>
     </header>
 
@@ -72,7 +72,8 @@
 
         <label>口味标签</label>
         <div class="tag-input-row">
-          <input v-model="tagInput" placeholder="输入标签后回车" @keyup.enter="addTag" />
+          <input v-model="tagInput" placeholder="输入标签后回车或点击添加" @keyup.enter="addTag" />
+          <button type="button" class="btn-add-tag" @click="addTag">+ 添加</button>
         </div>
         <div class="tags-edit">
           <span v-for="(f, idx) in form.flavor" :key="idx" class="tag">
@@ -361,7 +362,14 @@ async function logout() {
   font-size: 13px; margin-bottom: 4px;
 }
 .admin-modal textarea { min-height: 60px; resize: vertical; }
-.tag-input-row { margin-bottom: 4px; }
+.tag-input-row { display: flex; gap: 6px; margin-bottom: 4px; }
+.tag-input-row input { flex: 1; }
+.btn-add-tag {
+  padding: 7px 14px; border-radius: 8px; font-size: 13px;
+  background: var(--primary); color: #fff; border: none; cursor: pointer;
+  white-space: nowrap; font-weight: 500; flex-shrink: 0;
+}
+.btn-add-tag:hover { opacity: 0.85; }
 .tags-edit { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
 .tags-edit .tag span { cursor: pointer; margin-left: 2px; }
 .kv-row { display: flex; gap: 6px; margin-bottom: 4px; align-items: center; }
