@@ -7,7 +7,7 @@
         <button class="btn-nav" @click="$router.push('/admin/orders')">订单</button>
         <button class="btn-settings" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
-        <span class="version-badge">v2.1.3</span>
+        <span class="version-badge">v2.1.4</span>
       </div>
     </header>
 
@@ -842,7 +842,7 @@ async function saveSort() {
       id: d.id,
       sort_order: idx + 1
     }))
-        // 并行更新所有菜品（同时发请求，速度从10秒降到1秒内）
+    // 并行更新所有菜品（同时发请求，速度从10秒降到1秒内）
     const results = await Promise.all(
       updates.map(u =>
         supabase.from('dishes').update({ sort_order: u.sort_order }).eq('id', u.id)
@@ -851,7 +851,6 @@ async function saveSort() {
     // 检查是否有失败
     const firstError = results.find(r => r.error)
     if (firstError) throw firstError.error
-
     alert('排序已保存！')
     sortMode.value = false
     loadDishes()

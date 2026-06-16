@@ -11,7 +11,7 @@
         <button class="btn-batch" @click="toggleBatch">{{ batchMode ? '取消' : '批量删除' }}</button>
         <button v-if="notificationPermission !== 'granted'" class="btn-notify" @click="requestNotificationPermission">🔔 开启通知</button>
         <span v-else class="notify-active">🔔 通知已开启</span>
-        <span class="version-badge">v2.1.3</span>
+        <span class="version-badge">v2.1.4</span>
       </div>
     </header>
 

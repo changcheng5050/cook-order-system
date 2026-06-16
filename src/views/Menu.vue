@@ -286,7 +286,21 @@
         <ul><li v-for="(ing, idx) in detailDish.ingredients" :key="idx">{{ ing.name }} - {{ ing.amount }}</li></ul>
         <h4>调料：</h4>
         <ul><li v-for="(s, idx) in detailDish.seasonings" :key="idx">{{ s.name }} - {{ s.amount }}</li></ul>
-        <button class="btn-close" @click="showDetail = false">关闭</button>
+        <div class="detail-actions">
+          <button class="btn-close" @click="showDetail = false">关闭</button>
+          <button v-if="!isInCart(detailDish.id)" class="btn-add-from-detail" @click="addToCartAndClose(detailDish)">加入餐桌</button>
+          <button v-else class="btn-added-from-detail" @click="removeFromCart(detailDish.id); showDetail = false">已加入 ✓ 移除</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 客户已被删除提示 -->
+    <div v-if="kickedOut" class="modal-mask kicked-out-mask" @click.self="kickedOut = false">
+      <div class="modal-box kicked-out-box">
+        <div class="kicked-out-icon">🚫</div>
+        <h2>您的账号已被移除</h2>
+        <p>请联系管理员重新添加您到客户名单</p>
+        <button class="btn-confirm" @click="kickedOut = false">我知道了</button>
       </div>
     </div>
   </div>
@@ -298,7 +312,7 @@ import { supabase } from '../lib/supabase'
 import { useCart } from '../lib/cart'
 
 const settings = inject('shopSettings')
-const version = ref('v2.1.3')  // v2.1.3 release: optimize sort save speed
+const version = ref('v2.1.4')  // v2.1.4 release: customer validation + square image
 
 // Logo 图片加载失败时，清除 url 让默认图标显示
 function onLogoError() {
@@ -323,6 +337,7 @@ const orderNote = ref('')
 const expectedTime = ref('')
 const showSuccess = ref(false)
 const submitting = ref(false)  // 防止重复提交
+const kickedOut = ref(false)   // 客户已被删除提示
 const successOrder = ref({ dishes: [], total_time: 0 })
 const successIngredients = ref([])
 const successSeasonings = ref([])
@@ -333,19 +348,47 @@ const expandedOrderId = ref(null)
 
 const { cartItems, addToCart, removeFromCart, clearCart, getTotalTime } = useCart()
 
-onMounted(() => {
+// 验证客户是否还在系统里
+async function checkCustomerExists(name) {
+  if (!name) return false
+  const { data, error } = await supabase
+    .from('customers')
+    .select('name')
+    .eq('name', name)
+    .single()
+  return !error && !!data
+}
+
+// 客户被删除时：清空本地缓存 + 显示提示
+function handleCustomerKickedOut() {
+  customerName.value = ''
+  localStorage.removeItem('cook_customer_name')
+  kickedOut.value = true
+  // 同时关闭所有可能打开的弹窗
+  showCart.value = false
+  showDetail.value = false
+  showSuccess.value = false
+}
+
+onMounted(async () => {
   const params = new URLSearchParams(window.location.search)
   const urlName = params.get('customer')
   const saved = localStorage.getItem('cook_customer_name')
-  if (urlName) {
-    customerName.value = urlName
-    localStorage.setItem('cook_customer_name', urlName)
-    loadDishes()
-    loadHistory()
-  } else if (saved) {
-    customerName.value = saved
-    loadDishes()
-    loadHistory()
+  const name = urlName || saved
+  if (name) {
+    // ✅ 关键：先验证客户是否还在系统里
+    const exists = await checkCustomerExists(name)
+    if (exists) {
+      customerName.value = name
+      if (urlName) {
+        localStorage.setItem('cook_customer_name', name)
+      }
+      loadDishes()
+      loadHistory()
+    } else {
+      // 客户已被删除
+      handleCustomerKickedOut()
+    }
   }
   // 默认期望时间为今天 18:00
   const d = new Date()
@@ -380,6 +423,12 @@ async function loadDishes() {
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: false })
   if (!error) dishes.value = data || []
+}
+
+// 从详情页加入餐桌后关闭弹窗
+function addToCartAndClose(dish) {
+  addToCart(dish)
+  showDetail.value = false
 }
 
 async function loadHistory() {
@@ -510,6 +559,12 @@ async function submitOrder() {
   if (cartItems.value.length === 0) return
   if (!expectedTime.value) {
     alert('请选择期望用餐时间')
+    return
+  }
+  // ✅ 关键：提交前再次验证客户是否还在系统里
+  const exists = await checkCustomerExists(customerName.value)
+  if (!exists) {
+    handleCustomerKickedOut()
     return
   }
   submitting.value = true  // 加锁
@@ -935,14 +990,56 @@ function formatDate(dateStr) {
 
 /* 菜品详情弹窗 */
 .detail-modal { border-radius: 16px; max-height: 85vh; overflow-y: auto; margin: 20px auto; width: 90%; max-width: 420px; }
-.detail-img { width: 100%; height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 12px; }
-.detail-img-ph { width: 100%; height: 200px; background: #f0f0f0; border-radius: 8px; margin-bottom: 12px; }
+/* 正方形 + 等比例完整显示 */
+.detail-img {
+  width: 100%;
+  max-width: 320px;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  background: #f5f5f5;
+  border-radius: 8px;
+  display: block;
+  margin: 0 auto 12px;
+}
+.detail-img-ph {
+  width: 100%;
+  max-width: 320px;
+  aspect-ratio: 1 / 1;
+  background: linear-gradient(135deg, #f5f5f0, #e8e8e0);
+  border-radius: 8px;
+  margin: 0 auto 12px;
+  display: flex; align-items: center; justify-content: center;
+  color: #aaa; font-size: 14px;
+}
 .detail-notes {
   background: #fff8e8; padding: 8px; border-radius: 6px;
   font-size: 13px; margin: 8px 0; color: #e55a2b;
 }
 .detail-modal ul { padding-left: 20px; font-size: 13px; color: var(--text-secondary); }
 .detail-modal h4 { margin-top: 10px; font-size: 14px; }
+
+/* 详情页底部按钮区 */
+.detail-actions {
+  display: flex; gap: 10px; margin-top: 16px;
+}
+.detail-actions button {
+  flex: 1; padding: 10px; border-radius: 8px;
+  font-size: 14px; font-weight: 500;
+}
+.btn-close { background: #f0f0f0; color: #666; }
+.btn-add-from-detail { background: var(--primary); color: #fff; }
+.btn-added-from-detail { background: #e6f7ee; color: #00a870; }
+
+/* 客户被删除提示弹窗 */
+.kicked-out-mask { align-items: center; }
+.kicked-out-box { text-align: center; max-width: 360px; }
+.kicked-out-icon { font-size: 48px; margin-bottom: 12px; }
+.kicked-out-box h2 { font-size: 18px; color: #e55a2b; margin-bottom: 8px; }
+.kicked-out-box p { font-size: 14px; color: var(--text-secondary); margin-bottom: 16px; }
+.kicked-out-box .btn-confirm {
+  width: 100%; padding: 12px; border-radius: 8px;
+  background: var(--primary); color: #fff; font-weight: 500;
+}
 .btn-close {
   width: 100%; padding: 10px; background: var(--primary); color: #fff;
   border-radius: 8px; margin-top: 16px;
