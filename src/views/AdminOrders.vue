@@ -8,7 +8,10 @@
         <button class="btn-nav active-nav" @click="$router.push('/admin/orders')">订单</button>
         <button class="btn-settings" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
-        <span class="version-badge">v2.0.25</span>
+        <button class="btn-batch" @click="toggleBatch">{{ batchMode ? '取消' : '批量删除' }}</button>
+        <button v-if="notificationPermission !== 'granted'" class="btn-notify" @click="requestNotificationPermission">🔔 开启通知</button>
+        <span v-else class="notify-active">🔔 通知已开启</span>
+        <span class="version-badge">v2.1.1</span>
       </div>
     </header>
 
@@ -23,7 +26,12 @@
 
     <div v-else class="order-list">
       <div v-for="order in filteredOrders" :key="order.id" class="order-card">
-        <div class="order-header" @click="toggleOrder(order.id)">
+        <!-- 批量模式：复选框 -->
+        <input v-if="batchMode" type="checkbox" class="order-checkbox"
+          :checked="selectedOrders.includes(order.id)"
+          @click.stop
+          @change="toggleSelectOrder(order.id)" />
+        <div class="order-header" @click="batchMode ? toggleSelectOrder(order.id) : toggleOrder(order.id)">
           <span class="order-name">{{ order.customer_name }}</span>
           <span v-if="order.customer_phone" class="order-phone">{{ order.customer_phone }}</span>
           <span class="order-date">{{ formatDate(order.created_at) }}</span>
@@ -66,11 +74,17 @@
         </div>
       </div>
     </div>
+
+    <!-- 批量删除操作栏 -->
+    <div v-if="batchMode && selectedOrders.length > 0" class="batch-bar">
+      <span class="batch-count">已选 {{ selectedOrders.length }} 个订单</span>
+      <button class="btn-batch-delete" @click="batchDelete">删除选中</button>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { supabase } from '../lib/supabase'
 import { useRouter } from 'vue-router'
 
@@ -79,6 +93,10 @@ const orders = ref([])
 const searchName = ref('')
 const dateFilter = ref('')
 const expandedOrder = ref(null)
+const batchMode = ref(false)       // 是否批量模式
+const selectedOrders = ref([])     // 选中的订单ID列表
+const notificationPermission = ref('default')  // 通知权限状态
+const lastOrderCount = ref(0)       // 上次检查的订单数量
 
 const filteredOrders = computed(() => {
   let list = orders.value
@@ -150,6 +168,91 @@ async function loadOrders() {
 function toggleOrder(id) {
   expandedOrder.value = expandedOrder.value === id ? null : id
 }
+
+function toggleBatch() {
+  batchMode.value = !batchMode.value
+  selectedOrders.value = []   // 退出/进入时清空选择
+  expandedOrder.value = null  // 关闭已展开的详情
+}
+
+function toggleSelectOrder(id) {
+  const idx = selectedOrders.value.indexOf(id)
+  if (idx === -1) {
+    selectedOrders.value.push(id)
+  } else {
+    selectedOrders.value.splice(idx, 1)
+  }
+}
+
+async function batchDelete() {
+  if (selectedOrders.value.length === 0) return
+  if (!confirm(`确定要删除选中的 ${selectedOrders.value.length} 个订单吗？删除后不可恢复。`)) return
+  const { error } = await supabase.from('orders').delete().in('id', selectedOrders.value)
+  if (error) {
+    alert('批量删除失败：' + error.message)
+    return
+  }
+  alert(`成功删除 ${selectedOrders.value.length} 个订单！`)
+  orders.value = orders.value.filter(o => !selectedOrders.value.includes(o.id))
+  selectedOrders.value = []
+  batchMode.value = false
+}
+
+// ===== 浏览器通知功能 =====
+async function requestNotificationPermission() {
+  if (!('Notification' in window)) {
+    console.log('此浏览器不支持通知')
+    return
+  }
+  if (Notification.permission === 'granted') {
+    notificationPermission.value = 'granted'
+  } else if (Notification.permission !== 'denied') {
+    const result = await Notification.requestPermission()
+    notificationPermission.value = result
+  } else {
+    notificationPermission.value = 'denied'
+  }
+}
+
+// 检查新订单并发送通知
+let orderCheckTimer = null
+async function checkNewOrders() {
+  const { data, error } = await supabase
+    .from('orders')
+    .select('id, customer_name, dishes', { count: 'exact' })
+    .order('created_at', { ascending: false })
+  if (error || !data) return
+  const currentCount = data.length
+  if (lastOrderCount.value > 0 && currentCount > lastOrderCount.value) {
+    // 有新订单！
+    const newOrders = data.slice(0, currentCount - lastOrderCount.value)
+    newOrders.forEach(order => {
+      if (Notification.permission === 'granted') {
+        new Notification('🔔 新订单来了！', {
+          body: `${order.customer_name} 点了 ${order.dishes.length} 道菜`,
+          icon: '/favicon.png',
+          tag: order.id
+        })
+      }
+    })
+  }
+  lastOrderCount.value = currentCount
+}
+
+onMounted(() => {
+  checkAuth()
+  loadOrders()
+  requestNotificationPermission()
+  // 每30秒检查一次新订单
+  orderCheckTimer = setInterval(checkNewOrders, 30000)
+  // 立即检查一次
+  checkNewOrders()
+})
+
+import { onUnmounted } from 'vue'
+onUnmounted(() => {
+  if (orderCheckTimer) clearInterval(orderCheckTimer)
+})
 
 async function deleteOrder(id) {
   if (!confirm('确定要删除这个订单吗？删除后不可恢复。')) return
@@ -223,6 +326,16 @@ async function logout() {
   font-size: 11px; color: rgba(255,255,255,0.7);
   background: rgba(0,0,0,0.18); padding: 2px 8px; border-radius: 10px;
   white-space: nowrap; margin-left: 4px;
+}
+.header-actions .btn-notify {
+  padding: 4px 10px; border-radius: 6px; font-size: 12px;
+  color: #fff; background: rgba(255,200,0,0.4); border: none;
+  white-space: nowrap; cursor: pointer;
+}
+.header-actions .notify-active {
+  font-size: 11px; color: rgba(255,255,255,0.8);
+  background: rgba(0,0,0,0.18); padding: 2px 8px; border-radius: 10px;
+  white-space: nowrap;
 }
 
 .toolbar {
@@ -320,4 +433,37 @@ async function logout() {
   background: #ffccc7;
   color: #a8071a;
 }
+
+/* 批量删除 */
+.btn-batch {
+  padding: 4px 10px; border-radius: 6px; font-size: 12px;
+  color: #fff; background: rgba(255,255,255,0.2); border: none;
+  white-space: nowrap;
+}
+.btn-batch:hover { background: rgba(255,255,255,0.35); }
+
+.order-check-box {
+  width: 18px; height: 18px; flex-shrink: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+  margin-right: 6px;
+}
+
+.batch-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  max-width: 480px; margin: 0 auto;
+  background: #fff; border-top: 1px solid var(--border);
+  padding: 10px 16px;
+  display: flex; justify-content: space-between; align-items: center;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+  z-index: 100;
+}
+.batch-count { font-size: 13px; color: var(--text-secondary); }
+.btn-batch-delete {
+  padding: 8px 20px; border-radius: 8px;
+  background: #ff4d4f; color: #fff;
+  border: none; font-size: 14px; font-weight: 500;
+  cursor: pointer;
+}
+.btn-batch-delete:hover { background: #cf1322; }
 </style>

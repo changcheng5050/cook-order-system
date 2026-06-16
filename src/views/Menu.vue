@@ -48,8 +48,8 @@
 
       <!-- 菜品列表 -->
       <div class="dish-list">
-        <div v-for="dish in filteredDishes" :key="dish.id" class="dish-card">
-          <div class="dish-img" @click="showDishDetail(dish)">
+        <div v-for="dish in filteredDishes" :key="dish.id" class="dish-card" @click="showDishDetail(dish)">
+          <div class="dish-img">
             <img v-if="dish.image_url" :src="dish.image_url" />
             <div v-else class="img-placeholder">暂无图片</div>
             <span v-if="dish.category" :class="['cat-tag', 'cat-' + dish.category]">{{ dish.category }}</span>
@@ -66,13 +66,13 @@
           <button
             v-if="isInCart(dish.id)"
             class="add-btn checked-btn"
-            @click="removeFromCart(dish.id)"
+            @click.stop="removeFromCart(dish.id)"
             title="点击从餐桌移除"
           >✓</button>
           <button
             v-else
             class="add-btn"
-            @click="addToCart(dish)"
+            @click.stop="addToCart(dish)"
           >+</button>
         </div>
       </div>
@@ -204,7 +204,9 @@
 
         <div class="cart-actions">
           <button class="btn-cancel" @click="showCart = false">继续点餐</button>
-          <button class="btn-submit" @click="submitOrder">确认提交</button>
+          <button class="btn-submit" @click="submitOrder" :disabled="submitting">
+            {{ submitting ? '提交中...' : '确认提交' }}
+          </button>
         </div>
       </div>
     </div>
@@ -296,7 +298,7 @@ import { supabase } from '../lib/supabase'
 import { useCart } from '../lib/cart'
 
 const settings = inject('shopSettings')
-const version = ref('v2.0.25')
+const version = ref('v2.1.1')  // v2.1.1 release
 
 // Logo 图片加载失败时，清除 url 让默认图标显示
 function onLogoError() {
@@ -320,6 +322,7 @@ const showSeasonings = ref(false)
 const orderNote = ref('')
 const expectedTime = ref('')
 const showSuccess = ref(false)
+const submitting = ref(false)  // 防止重复提交
 const successOrder = ref({ dishes: [], total_time: 0 })
 const successIngredients = ref([])
 const successSeasonings = ref([])
@@ -503,11 +506,13 @@ function getSeasonings(order) {
 }
 
 async function submitOrder() {
+  if (submitting.value) return  // 正在提交中，直接返回
   if (cartItems.value.length === 0) return
   if (!expectedTime.value) {
     alert('请选择期望用餐时间')
     return
   }
+  submitting.value = true  // 加锁
   const orderDishes = cartItems.value.map(item => ({
     id: item.id,
     name: item.name,
@@ -527,6 +532,7 @@ async function submitOrder() {
   }).select().single()
   if (error) {
     alert('提交失败：' + error.message)
+    submitting.value = false  // 失败释放锁，允许重试
     return
   }
   // 准备成功页数据
