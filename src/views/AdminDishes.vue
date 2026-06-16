@@ -115,12 +115,37 @@
       </div>
     </div>
 
-    <!-- 图片裁剪弹窗 -->
+    <!-- 图片裁剪弹窗（原生 Canvas 实现） -->
     <div v-if="showCropper" class="modal-mask" @click.self="cancelCrop">
       <div class="modal-box cropper-modal">
         <h3>裁剪图片</h3>
-        <div class="cropper-container">
-          <img ref="cropperImageRef" :src="rawImageUrl" />
+        <p class="crop-hint">拖动选择区域，滚轮缩放大小，拖动四角调整范围</p>
+        <div
+          ref="cropContainerRef"
+          class="crop-canvas-wrap"
+          @mousedown="onCropMouseDown"
+          @wheel.prevent="onCropWheel"
+          @mousemove="onCropMouseMove"
+          @mouseup="onCropMouseUp"
+          @mouseleave="onCropMouseUp"
+        >
+          <canvas ref="cropCanvasRef" class="crop-canvas"></canvas>
+          <!-- 裁剪框 -->
+          <div
+            class="crop-box"
+            :style="{ left: cropBox.x + 'px', top: cropBox.y + 'px', width: cropBox.w + 'px', height: cropBox.h + 'px' }"
+          >
+            <div class="crop-handle nw" @mousedown.stop="startResize('nw', $event)"></div>
+            <div class="crop-handle ne" @mousedown.stop="startResize('ne', $event)"></div>
+            <div class="crop-handle sw" @mousedown.stop="startResize('sw', $event)"></div>
+            <div class="crop-handle se" @mousedown.stop="startResize('se', $event)"></div>
+            <div class="cross-h"></div><div class="cross-v"></div>
+          </div>
+        </div>
+        <div class="crop-toolbar">
+          <button @click="zoomCrop(0.9)">缩小</button>
+          <button @click="zoomCrop(1.1)">放大</button>
+          <span class="crop-size-info">{{ Math.round(cropBox.w) }} × {{ Math.round(cropBox.h) }}</span>
         </div>
         <div class="modal-actions">
           <button @click="cancelCrop">取消</button>
@@ -143,8 +168,6 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { supabase } from '../lib/supabase'
 import { useRouter } from 'vue-router'
-import Cropper from 'cropperjs'
-import 'cropperjs/dist/cropper.min.css'
 
 const router = useRouter()
 const dishes = ref([])
@@ -176,12 +199,22 @@ const form = ref({
 const ingredientSuggestions = ref([])
 const seasoningSuggestions = ref([])
 
-// 图片裁剪
+// 图片裁剪（原生 Canvas）
 const showCropper = ref(false)
 const rawImageUrl = ref('')
-const cropperImageRef = ref(null)
-let cropperInstance = null
+const cropCanvasRef = ref(null)
+const cropContainerRef = ref(null)
+let cropImageObj = null
+
+// 裁剪框状态
+const cropBox = ref({ x: 20, y: 20, w: 200, h: 150 })
+let cropDrag = null // { type: 'move'|'resize-nw'|..., startX, startY, startBox }
+let imgScale = 1
+let imgOffsetX = 0
+let imgOffsetY = 0
 let pendingFile = null
+let containerW = 400
+let containerH = 320
 
 const filteredList = computed(() => {
   let list = dishes.value
@@ -211,7 +244,7 @@ async function loadDishes() {
   dishes.value = data || []
 }
 
-// 从数据库加载所有用过的食材/调料名称，用于下拉联想
+// 从数据库加载所有用过的食材/调料名称
 async function loadSuggestions() {
   const { data } = await supabase.from('dishes').select('ingredients, seasonings')
   if (!data) return
@@ -231,14 +264,12 @@ function openAddModal() {
   form.value = {
     name: '', category: '荤菜', temperature: '热菜', cook_time: 0,
     flavor: [],
-    // 默认填充食材：葱、姜、蒜、香菜
     ingredients: [
       { name: '葱', amount: '适量' },
       { name: '姜', amount: '适量' },
       { name: '蒜', amount: '适量' },
       { name: '香菜', amount: '适量' }
     ],
-    // 默认填充调料：生抽、老抽、酱油、糖、盐、醋
     seasonings: [
       { name: '生抽', amount: '适量' },
       { name: '老抽', amount: '适量' },
@@ -278,7 +309,7 @@ function addTag() {
   tagInput.value = ''
 }
 
-// 选择图片后，先进入裁剪
+// 选择图片 → 进入裁剪
 function onImageSelected(e) {
   const file = e.target.files[0]
   if (!file) return
@@ -287,63 +318,198 @@ function onImageSelected(e) {
   reader.onload = (ev) => {
     rawImageUrl.value = ev.target.result
     showCropper.value = true
-    nextTick(() => { initCropper() })
+    nextTick(() => { initCrop() })
   }
   reader.readAsDataURL(file)
-  // 清空 input，允许重复选择同一文件
   e.target.value = ''
 }
 
-function initCropper() {
-  if (cropperInstance) cropperInstance.destroy()
-  const el = cropperImageRef.value
-  if (!el) return
-  cropperInstance = new Cropper(el, {
-    aspectRatio: NaN,
-    viewMode: 1,
-    autoCropArea: 0.85,
-    background: false
-  })
+function initCrop() {
+  if (!rawImageUrl.value) return
+  const img = new Image()
+  img.onload = () => {
+    cropImageObj = img
+    const wrap = cropContainerRef.value
+    if (!wrap) return
+    containerW = wrap.clientWidth || 380
+    containerH = 300
+
+    // 让图片适应容器
+    let scale = containerW / img.width
+    if (img.height * scale > containerH) scale = containerH / img.height
+    imgScale = scale
+    imgOffsetX = (containerW - img.width * scale) / 2
+    imgOffsetY = (containerH - img.height * scale) / 2
+
+    // 裁剪框居中，占图片的 85%
+    let cw = img.width * scale * 0.85
+    let ch = img.height * scale * 0.85
+    if (cw > containerW - 40) cw = containerW - 40
+    if (ch > containerH - 40) ch = containerH - 40
+    cropBox.value = {
+      x: (containerW - cw) / 2,
+      y: (containerH - ch) / 2,
+      w: cw,
+      h: ch
+    }
+
+    drawCropCanvas()
+  }
+  img.src = rawImageUrl.value
 }
+
+function drawCropCanvas() {
+  const canvas = cropCanvasRef.value
+  if (!canvas || !cropImageObj) return
+  canvas.width = containerW
+  canvas.height = containerH
+  const ctx = canvas.getContext('2d')
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  ctx.drawImage(
+    cropImageObj,
+    imgOffsetX, imgOffsetY,
+    cropImageObj.width * imgScale,
+    cropImageObj.height * imgScale
+  )
+}
+
+// 缩放
+function zoomCrop(factor) {
+  imgScale *= factor
+  drawCropCanvas()
+}
+function onCropWheel(e) {
+  zoomCrop(e.deltaY > 0 ? 0.92 : 1.08)
+}
+
+// 拖动裁剪框移动
+function onCropMouseDown(e) {
+  const rect = cropContainerRef.value.getBoundingClientRect()
+  const mx = e.clientX - rect.left
+  const my = e.clientY - rect.top
+  const cb = cropBox.value
+  // 判断是否在裁剪框内
+  if (mx >= cb.x && mx <= cb.x + cb.w && my >= cb.y && my <= cb.y + cb.h) {
+    cropDrag = { type: 'move', startX: mx, startY: my, ...cb }
+  }
+}
+function onCropMouseMove(e) {
+  if (!cropDrag) return
+  const rect = cropContainerRef.value.getBoundingClientRect()
+  const mx = e.clientX - rect.left
+  const my = e.clientY - rect.top
+  const dx = mx - cropDrag.startX
+  const dy = my - cropDrag.startY
+
+  if (cropDrag.type === 'move') {
+    cropBox.value.x = clamp(cropDrag.x + dx, 0, containerW - cropBox.value.w)
+    cropBox.value.y = clamp(cropDrag.y + dy, 0, containerH - cropBox.value.h)
+  } else if (cropDrag.type.startsWith('resize')) {
+    handleResize(dx, dy)
+  }
+}
+function onCropMouseUp() {
+  cropDrag = null
+}
+
+// 拖动四角调整大小
+function startResize(corner, e) {
+  const rect = cropContainerRef.value.getBoundingClientRect()
+  cropDrag = {
+    type: 'resize-' + corner,
+    startX: e.clientX - rect.left,
+    startY: e.clientY - rect.top,
+    ...cropBox.value
+  }
+}
+function handleResize(dx, dy) {
+  const s = cropDrag
+  const minSize = 30
+  if (cropDrag.type === 'resize-se') {
+    cropBox.value.w = clamp(s.w + dx, minSize, containerW - s.x)
+    cropBox.value.h = clamp(s.h + dy, minSize, containerH - s.y)
+  } else if (cropDrag.type === 'resize-sw') {
+    const newW = s.w - dx
+    const newX = s.x + dx
+    if (newW >= minSize && newX >= 0) { cropBox.value.w = newW; cropBox.value.x = newX }
+    cropBox.value.h = clamp(s.h + dy, minSize, containerH - s.y)
+  } else if (cropDrag.type === 'resize-ne') {
+    cropBox.value.w = clamp(s.w + dx, minSize, containerW - s.x)
+    const newH = s.h - dy
+    const newY = s.y + dy
+    if (newH >= minSize && newY >= 0) { cropBox.value.h = newH; cropBox.value.y = newY }
+  } else if (cropDrag.type === 'resize-nw') {
+    const newW = s.w - dx
+    const newX = s.x + dx
+    const newH = s.h - dy
+    const newY = s.y + dy
+    if (newW >= minSize && newX >= 0) { cropBox.value.w = newW; cropBox.value.x = newX }
+    if (newH >= minSize && newY >= 0) { cropBox.value.h = newH; cropBox.value.y = newY }
+  }
+}
+
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)) }
 
 function cancelCrop() {
   showCropper.value = false
-  if (cropperInstance) { cropperInstance.destroy(); cropperInstance = null }
   rawImageUrl.value = form.value.image_url || ''
   pendingFile = null
+  cropImageObj = null
 }
 
-// 确认裁剪后，压缩并上传
+// 确认裁剪 → Canvas 提取 → 压缩 → 上传
 async function cropAndUpload() {
-  if (!cropperInstance) return
+  if (!cropImageObj) return
   uploading.value = true
-  const canvas = cropperInstance.getCroppedCanvas()
-  canvas.toBlob(async (blob) => {
-    if (!blob) { alert('裁剪失败'); uploading.value = false; return }
-    try {
-      const compressedBlob = await compressBlob(blob)
-      const ext = pendingFile ? (pendingFile.name.split('.').pop() || 'jpg') : 'jpg'
-      const fileName = `dish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
-      const { data, error } = await supabase.storage.from('dish-images').upload(fileName, compressedBlob)
-      if (!error) {
-        const { data: { publicUrl } } = supabase.storage.from('dish-images').getPublicUrl(fileName)
-        form.value.image_url = publicUrl
-      } else {
-        alert('上传失败：' + error.message)
+
+  try {
+    // 计算裁剪区域在原图上的坐标
+    const cb = cropBox.value
+    const sx = (cb.x - imgOffsetX) / imgScale
+    const sy = (cb.y - imgOffsetY) / imgScale
+    const sw = cb.w / imgScale
+    const sh = cb.h / imgScale
+
+    // 创建临时 Canvas 裁剪
+    const outW = Math.round(sw)
+    const outH = Math.round(sh)
+    const tmpCanvas = document.createElement('canvas')
+    tmpCanvas.width = outW
+    tmpCanvas.height = outH
+    const ctx = tmpCanvas.getContext('2d')
+    ctx.drawImage(cropImageObj, sx, sy, sw, sh, 0, 0, outW, outH)
+
+    // 转 Blob 再压缩
+    tmpCanvas.toBlob(async (blob) => {
+      if (!blob) { alert('裁剪失败'); uploading.value = false; return }
+      try {
+        const compressedBlob = await compressBlob(blob)
+        const ext = pendingFile ? (pendingFile.name.split('.').pop() || 'jpg') : 'jpg'
+        const fileName = `dish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+        const { error } = await supabase.storage.from('dish-images').upload(fileName, compressedBlob)
+        if (!error) {
+          const { data: { publicUrl } } = supabase.storage.from('dish-images').getPublicUrl(fileName)
+          form.value.image_url = publicUrl
+        } else {
+          alert('上传失败：' + error.message)
+        }
+      } catch (err) {
+        console.error(err)
+        alert('上传失败')
       }
-    } catch (err) {
-      console.error(err)
-      alert('上传失败')
-    }
+      uploading.value = false
+      showCropper.value = false
+      cropImageObj = null
+      pendingFile = null
+    }, 'image/jpeg', 0.95)
+  } catch (err) {
+    console.error(err)
+    alert('裁剪出错')
     uploading.value = false
-    showCropper.value = false
-    cropperInstance.destroy()
-    cropperInstance = null
-    pendingFile = null
-  }, 'image/jpeg', 0.7)
+  }
 }
 
-// 压缩 Blob（复用原有压缩逻辑）
+// 压缩 Blob
 function compressBlob(blob) {
   return new Promise((resolve) => {
     const reader = new FileReader()
@@ -360,10 +526,7 @@ function compressBlob(blob) {
         canvas.width = width
         canvas.height = height
         canvas.getContext('2d').drawImage(img, 0, 0, width, height)
-        canvas.toBlob(
-          (b) => { if (b) resolve(b); else resolve(blob) },
-          'image/jpeg', 0.7
-        )
+        canvas.toBlob((b) => { resolve(b || blob) }, 'image/jpeg', 0.7)
       }
       img.onerror = () => resolve(blob)
       img.src = e.target.result
@@ -398,7 +561,7 @@ async function saveDish() {
   } else {
     closeModal()
     loadDishes()
-    loadSuggestions() // 刷新联想数据
+    loadSuggestions()
   }
 }
 
@@ -501,12 +664,12 @@ async function logout() {
   display: flex; align-items: center; justify-content: center; z-index: 200;
 }
 .modal-box {
-  background: #fff; border-radius: 16px; width: 90%; max-width: 420px;
-  max-height: 85vh; overflow-y: auto; padding: 20px;
+  background: #fff; border-radius: 16px; width: 90%; max-width: 460px;
+  max-height: 90vh; overflow-y: auto; padding: 20px;
 }
 .admin-modal label { display: block; font-size: 13px; font-weight: 500; margin: 10px 0 4px; }
 .admin-modal input, .admin-modal select, .admin-modal textarea {
-  width: 100%; padding: 8px 10px; border:1px solid #ddd; border-radius: 8px;
+  width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px;
   font-size: 13px; margin-bottom: 4px;
 }
 .admin-modal textarea { min-height: 60px; resize: vertical; }
@@ -536,8 +699,51 @@ async function logout() {
 .modal-actions button { flex: 1; padding: 10px; border-radius: 8px; }
 .modal-actions .btn-save { background: var(--primary); color: #fff; font-weight: 500; }
 
-/* 裁剪弹窗 */
-.cropper-modal { max-width: 500px; }
-.cropper-container { margin: 12px 0; max-height: 400px; overflow: hidden; }
-.cropper-container img { display: block; max-width: 100%; }
+/* ========== 裁剪弹窗（原生实现）========== */
+.cropper-modal { max-width: 480px; }
+.crop-hint {
+  font-size: 12px; color: #888; text-align: center; margin: -6px 0 8px;
+}
+.crop-canvas-wrap {
+  position: relative; overflow: hidden;
+  background: #222; border-radius: 8px;
+  user-select: none; touch-action: none;
+  cursor: move;
+}
+.crop-canvas {
+  display: block; width: 100%;
+}
+.crop-box {
+  position: absolute; border: 2px dashed #fff;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.45);
+  z-index: 2; box-sizing: border-box;
+}
+.crop-handle {
+  position: absolute; width: 14px; height: 14px;
+  background: #1677ff; border: 2px solid #fff; border-radius: 50%;
+  z-index: 3; cursor: nwse-resize;
+}
+.crop-handle.nw { top: -7px; left: -7px; cursor: nw-resize; }
+.crop-handle.ne { top: -7px; right: -7px; cursor: nesw-resize; }
+.crop-handle.sw { bottom: -7px; left: -7px; cursor: nesw-resize; }
+.crop-handle.se { bottom: -7px; right: -7px; cursor: nwse-resize; }
+.cross-h {
+  position: absolute; top: 50%; left: 0; right: 0;
+  height: 1px; background: rgba(255,255,255,0.35);
+}
+.cross-v {
+  position: absolute; left: 50%; top: 0; bottom: 0;
+  width: 1px; background: rgba(255,255,255,0.35);
+}
+.crop-toolbar {
+  display: flex; align-items: center; gap: 8px; margin-top: 8px;
+}
+.crop-toolbar button {
+  padding: 4px 12px; border-radius: 6px; font-size: 12px;
+  background: #f0f0f0; border: 1px solid #ddd; cursor: pointer;
+}
+.crop-toolbar button:hover { background: #e0e0e0; }
+.crop-size-info {
+  margin-left: auto; font-size: 12px; color: #888;
+}
 </style>
