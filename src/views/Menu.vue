@@ -29,7 +29,7 @@
         <button
           :class="['tab-btn', { active: currentTab === 'history' }]"
           @click="currentTab = 'history'"
-        >📋 历史订单</button>
+        >📋 历史点菜</button>
       </div>
       <button class="logout-btn" @click="doLogout">退出登录</button>
     </nav>
@@ -104,11 +104,11 @@
     <!-- ========== 历史订单页签 ========== -->
     <div v-if="customerName && currentTab === 'history'" class="history-tab">
       <div class="history-header">
-        <h2>我的历史订单</h2>
+        <h2>我的历史点菜</h2>
         <span class="history-name">{{ customerName }}</span>
       </div>
       <div v-if="orders.length === 0" class="empty-tip">
-        还没有订单，去点餐吧 🍴
+        还没点过菜哦～去选几道吧 🍴
       </div>
       <div v-for="order in orders" :key="order.id" class="order-card" @click="toggleOrder(order.id)">
         <div class="order-header">
@@ -135,7 +135,7 @@
             </div>
           </div>
           <p class="detail-total">共 {{ order.dishes.length }} 道菜，约 {{ order.total_time }} 分钟</p>
-          <p v-if="order.note" class="detail-note-full">订单备注：{{ order.note }}</p>
+          <p v-if="order.note" class="detail-note-full">备注：{{ order.note }}</p>
           <h4>食材汇总</h4>
           <div v-for="(ing, idx) in getIngredients(order)" :key="'i'+idx" class="summary-row">
             <span>{{ ing.name }}</span><span>{{ ing.amount }}</span>
@@ -178,7 +178,7 @@
 
         <!-- 订单整体备注 -->
         <div class="order-note-section">
-          <label>订单备注（选填）</label>
+          <label>备注（选填）</label>
           <textarea
             v-model="orderNote"
             placeholder="如：不吃香菜"
@@ -215,7 +215,7 @@
         <div class="cart-actions">
           <button class="btn-cancel" @click="showCart = false">继续点餐</button>
           <button class="btn-submit" @click="submitOrder" :disabled="submitting">
-            {{ submitting ? '提交中...' : '确认提交' }}
+            {{ submitting ? '提交中...' : '选择好了' }}
           </button>
         </div>
       </div>
@@ -226,13 +226,13 @@
       <div class="modal-box success-modal">
         <div class="success-header">
           <div class="success-icon">✅</div>
-          <h2>下单成功！</h2>
+          <h2>选择好了！</h2>
           <p v-if="successOrder.expected_time">期望用餐时间：{{ formatDateTime(successOrder.expected_time) }}</p>
           <p class="success-tip-text">快去通知大厨做饭吧！🍳</p>
         </div>
 
         <div class="success-section">
-          <h3>订单详情</h3>
+          <h3>点菜详情</h3>
           <div v-for="item in successOrder.dishes" :key="item.id" class="success-dish">
             <img v-if="item.image_url" :src="item.image_url" class="success-dish-img" />
             <div v-else class="success-dish-ph"></div>
@@ -250,7 +250,7 @@
         </div>
 
         <div v-if="successOrder.note" class="success-section">
-          <h3>订单备注</h3>
+          <h3>备注</h3>
           <p class="success-note">{{ successOrder.note }}</p>
         </div>
 
@@ -325,7 +325,7 @@ import { supabase } from '../lib/supabase'
 import { useCart } from '../lib/cart'
 
 const settings = inject('shopSettings')
-const version = ref('v2.2.3')  // v2.2.3: 微信分享卡片OG标签+logo图片
+const version = ref('v2.2.4')  // v2.2.4: 客户界面文案优化（订单→点菜）
 
 // Logo 图片加载失败时，清除 url 让默认图标显示
 function onLogoError() {
