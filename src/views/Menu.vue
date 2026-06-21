@@ -1451,13 +1451,14 @@ function formatDate(dateStr) {
 
 /* ========== 递个纸条页签 ========== */
 .note-tab {
-  display: flex; flex-direction: column;
-  height: calc(100vh - 110px);
-  min-height: 0;
+  position: relative;
+  padding-bottom: 60px;
+  min-height: calc(100vh - 200px);
 }
 .note-chat-history {
-  flex: 1; overflow-y: auto; padding: 12px 16px;
+  overflow-y: auto; padding: 12px 16px 80px;
   display: flex; flex-direction: column; gap: 10px;
+  max-height: calc(100vh - 180px);
 }
 .chat-empty-tip {
   text-align: center; color: #aaa; font-size: 14px;
@@ -1483,8 +1484,11 @@ function formatDate(dateStr) {
 }
 .note-bubble.mine .bubble-time { text-align: right; }
 .note-input-area {
+  position: fixed; left: 0; right: 0; bottom: 0;
   display: flex; gap: 8px; padding: 10px 12px;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--border); background: #fff;
+  z-index: 20; max-width: 480px; margin: 0 auto;
 }
 .note-input {
   flex: 1; padding: 10px 14px; border: 1.5px solid #ddd;
