@@ -6,12 +6,14 @@
         <button class="btn-nav" @click="$router.push('/admin/dishes')">菜品</button>
         <button class="btn-nav" @click="$router.push('/admin/customers')">客户</button>
         <button class="btn-nav active-nav" @click="$router.push('/admin/orders')">订单</button>
+        <button class="btn-nav" @click="$router.push('/admin/messages')">纸条</button>
+        <button class="btn-nav" @click="$router.push('/admin/logs')">日志</button>
         <button class="btn-settings" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
         <button class="btn-batch" @click="toggleBatch">{{ batchMode ? '取消' : '批量删除' }}</button>
         <button v-if="notificationPermission !== 'granted'" class="btn-notify" @click="requestNotificationPermission">🔔 开启通知</button>
         <span v-else class="notify-active">🔔 通知已开启</span>
-        <span class="version-badge">v2.2.4</span>
+        <span class="version-badge">v2.3.0</span>
       </div>
     </header>
 

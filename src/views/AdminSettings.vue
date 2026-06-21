@@ -6,9 +6,11 @@
         <button class="btn-nav" @click="$router.push('/admin/dishes')">菜品</button>
         <button class="btn-nav" @click="$router.push('/admin/customers')">客户</button>
         <button class="btn-nav" @click="$router.push('/admin/orders')">订单</button>
+        <button class="btn-nav" @click="$router.push('/admin/messages')">纸条</button>
+        <button class="btn-nav" @click="$router.push('/admin/logs')">日志</button>
         <button class="btn-settings active-nav" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
-        <span class="version-badge">v2.2.4</span>
+        <span class="version-badge">v2.3.0</span>
       </div>
     </header>
 
@@ -25,6 +27,19 @@
         <button @click="form.logo_url = ''; logoChanged = true">移除Logo</button>
       </div>
       <p v-if="uploading" class="upload-tip">上传中...</p>
+
+      <label>公告栏内容</label>
+      <textarea v-model="form.announcement" placeholder="如：今天推荐的菜品是红烧排骨、番茄蛋汤…" class="announcement-input" rows="3"></textarea>
+      <label class="switch-row">
+        <span>启用公告栏</span>
+        <label class="switch">
+          <input type="checkbox" v-model="form.announcement_enabled" />
+          <span class="slider"></span>
+        </label>
+      </label>
+      <p v-if="form.announcement" class="preview-announcement">
+        预览：<span>{{ form.announcement }}</span>
+      </p>
 
       <label>显示"回到顶部"按钮</label>
       <label class="switch">
@@ -62,6 +77,8 @@ const router = useRouter()
 const form = ref({
   shop_name: '阿旺小厨房',
   logo_url: '',
+  announcement: '',
+  announcement_enabled: false,
   show_back_to_top: true
 })
 const uploading = ref(false)
@@ -86,6 +103,8 @@ async function loadSettings() {
     form.value = {
       shop_name: data.shop_name || '阿旺小厨房',
       logo_url: data.logo_url || '',
+      announcement: data.announcement || '',
+      announcement_enabled: data.announcement_enabled || false,
       show_back_to_top: data.show_back_to_top !== false
     }
   }
@@ -132,6 +151,8 @@ async function saveSettings() {
     .update({
       shop_name: form.value.shop_name.trim(),
       logo_url: form.value.logo_url,
+      announcement: form.value.announcement,
+      announcement_enabled: form.value.announcement_enabled,
       show_back_to_top: form.value.show_back_to_top
     })
     .eq('id', 1)
@@ -147,6 +168,8 @@ async function saveSettings() {
         id: 1,
         shop_name: form.value.shop_name.trim(),
         logo_url: form.value.logo_url,
+        announcement: form.value.announcement,
+        announcement_enabled: form.value.announcement_enabled,
         show_back_to_top: form.value.show_back_to_top
       })
     error = insertError
@@ -221,4 +244,17 @@ async function logout() {
 }
 .btn-save:disabled { opacity: 0.6; }
 .save-msg { text-align: center; margin-top: 8px; font-size: 13px; }
+.announcement-input {
+  width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px;
+  font-size: 13px; resize: vertical; box-sizing: border-box;
+}
+.switch-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin: 8px 0; font-size: 13px; font-weight: 500;
+}
+.preview-announcement {
+  font-size: 12px; color: var(--text-secondary); padding: 6px 10px;
+  background: #fff8e8; border-radius: 6px; margin-top: 4px;
+}
+.preview-announcement span { color: #e55a2b; }
 </style>

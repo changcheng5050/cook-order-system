@@ -5,16 +5,32 @@
       <img v-if="settings.logo_url" :src="settings.logo_url" class="logo" @error="onLogoError" />
       <div v-else class="logo-default">🍳</div>
       <h1>{{ settings.shop_name }}</h1>
-      <span class="version-in-header">{{ version }}</span>
+      <div class="header-right">
+        <span v-if="customerName" class="customer-badge">👋 {{ customerName }}</span>
+        <span class="version-in-header">{{ version }}</span>
+      </div>
     </header>
+
+    <!-- 公告栏（滚动显示） -->
+    <div v-if="settings.announcement_enabled && settings.announcement" class="announcement-bar">
+      <div class="announcement-scroll-wrap">
+        <div class="announcement-scroll">
+          <span class="announcement-text">📢 {{ settings.announcement }}</span>
+        </div>
+      </div>
+    </div>
 
         <div v-if="!customerName" class="name-modal">
           <div class="name-box">
             <h2>🍳 {{ settings.shop_name }}</h2>
             <p class="welcome-text">欢迎光临，请输入您的姓名</p>
             <input v-model="nameInput" placeholder="请输入姓名" @keyup.enter="verifyName" />
-            <div v-if="nameError" class="name-error">{{ nameError }}</div>
-            <button @click="verifyName">进入菜单</button>
+            <div v-if="nameError && !showApplyBtn" class="name-error">{{ nameError }}</div>
+            <div v-if="nameError && showApplyBtn" class="name-error name-error-apply">{{ nameError }}</div>
+            <button @click="verifyName" v-if="!showApplyBtn">进入菜单</button>
+            <button v-if="showApplyBtn" class="btn-apply" @click="applyJoin">📋 申请加入</button>
+            <button v-if="showApplyBtn || appliedMsg" class="btn-back-login" @click="resetLogin">已有账号？点此登录</button>
+            <div v-if="appliedMsg" class="applied-msg">{{ appliedMsg }}</div>
             <p class="version-text">v{{ version }}</p>
           </div>
         </div>
@@ -30,6 +46,12 @@
           :class="['tab-btn', { active: currentTab === 'history' }]"
           @click="currentTab = 'history'"
         >📋 历史点菜</button>
+        <button
+          :class="['tab-btn', { active: currentTab === 'note' }]"
+          @click="switchToChat"
+        >✉️ 递个纸条
+          <span v-if="noteUnread > 0" class="tab-unread">{{ noteUnread }}</span>
+        </button>
       </div>
       <button class="logout-btn" @click="doLogout">退出登录</button>
     </nav>
@@ -307,7 +329,25 @@
       </div>
     </div>
 
-    <!-- 客户已被删除提示 -->
+    <!-- ========== 递个纸条页签 ========== -->
+    <div v-if="customerName && currentTab === 'note'" class="note-tab">
+      <div class="note-chat-history" ref="noteHistoryRef">
+        <div v-if="noteMessages.length === 0" class="chat-empty-tip">
+          📝 给大厨写句话吧～
+        </div>
+        <div v-for="(msg, idx) in noteMessages" :key="idx"
+          :class="['note-bubble', msg.sender === 'customer' ? 'mine' : 'theirs']">
+          <div class="bubble-text">{{ msg.content }}</div>
+          <div class="bubble-time">{{ formatChatTime(msg.created_at) }}</div>
+        </div>
+      </div>
+      <div class="note-input-area">
+        <input v-model="noteContent" placeholder="给阿旺递个小纸条..." @keyup.enter="sendNote" maxlength="500" class="note-input" />
+        <button @click="sendNote" :disabled="sendingNote || !noteContent.trim()" class="note-send-btn">发送</button>
+      </div>
+    </div>
+
+    <!-- ========== 客户已被删除提示 ========== -->
     <div v-if="kickedOut" class="modal-mask kicked-out-mask" @click.self="kickedOut = false">
       <div class="modal-box kicked-out-box">
         <div class="kicked-out-icon">🚫</div>
@@ -320,12 +360,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, inject, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, inject, watch, nextTick } from 'vue'
 import { supabase } from '../lib/supabase'
 import { useCart } from '../lib/cart'
 
 const settings = inject('shopSettings')
-const version = ref('v2.2.4')  // v2.2.4: 客户界面文案优化（订单→点菜）
+const version = ref('v2.3.0')  // v2.3.0: 客户界面文案优化（订单→点菜）
 
 // Logo 图片加载失败时，清除 url 让默认图标显示
 function onLogoError() {
@@ -349,6 +389,8 @@ const dishes = ref([])
 const customerName = ref('')
 const nameInput = ref('')
 const nameError = ref('')
+const showApplyBtn = ref(false)
+const appliedMsg = ref('')
 const showCart = ref(false)
 const showDetail = ref(false)
 const detailDish = ref({})
@@ -364,21 +406,42 @@ const successOrder = ref({ dishes: [], total_time: 0 })
 const successIngredients = ref([])
 const successSeasonings = ref([])
 
+// 递纸条（对话界面）
+const noteMessages = ref([])
+const noteContent = ref('')
+const sendingNote = ref(false)
+const noteUnread = ref(0)
+const noteHistoryRef = ref(null)
+let notePollTimer = null
+let unreadPollTimer = null
+
 // 历史订单相关
 const orders = ref([])
 const expandedOrderId = ref(null)
 
 const { cartItems, addToCart, removeFromCart, clearCart, getTotalTime } = useCart()
 
-// 验证客户是否还在系统里
+// 验证客户是否还在系统里（已通过审核）
 async function checkCustomerExists(name) {
   if (!name) return false
-  const { data, error } = await supabase
+  // 先尝试带 status 过滤的查询（v2.3.0 新方式）
+  const { data: approvedData, error: approvedError } = await supabase
     .from('customers')
     .select('name')
     .eq('name', name)
+    .eq('status', 'approved')
     .single()
-  return !error && !!data
+  if (!approvedError && approvedData) return true
+  // 如果 status 列不存在（还没执行 SQL 迁移），回退到旧方式：只查名字
+  if (approvedError && approvedError.message && approvedError.message.includes('status')) {
+    const { data, error } = await supabase
+      .from('customers')
+      .select('name')
+      .eq('name', name)
+      .single()
+    return !error && !!data
+  }
+  return false
 }
 
 // 客户被删除时：清空本地缓存 + 显示提示
@@ -407,6 +470,9 @@ onMounted(async () => {
       }
       loadDishes()
       loadHistory()
+      // 记录访问日志（异步，不影响登录）
+      logAccess(name)
+      startUnreadPolling()
     } else {
       // 客户已被删除
       handleCustomerKickedOut()
@@ -420,6 +486,13 @@ onMounted(async () => {
   // 监听滚动，显示/隐藏回到顶部按钮
   window.addEventListener('scroll', onScroll)
 })
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', onScroll)
+  stopNotePolling()
+  stopUnreadPolling()
+})
+
 function onScroll() {
   showBackToTop.value = window.scrollY > 400
 }
@@ -430,20 +503,229 @@ function scrollToTop() {
 async function verifyName() {
   const name = nameInput.value.trim()
   if (!name) return
-  const { data, error } = await supabase
+  showApplyBtn.value = false
+  appliedMsg.value = ''
+  nameError.value = ''
+
+  // 先用旧方式查客户是否存在（兼容任何数据库状态）
+  let data, error
+  ;({ data, error } = await supabase
+    .from('customers')
+    .select('name')
+    .eq('name', name)
+    .single())
+
+  // 如果查到客户，直接登录（不管有没有 status 字段）
+  if (!error && data) {
+    customerName.value = name
+    localStorage.setItem('cook_customer_name', name)
+    nameError.value = ''
+    loadDishes()
+    loadHistory()
+    logAccess(name)
+    startUnreadPolling()
+    return
+  }
+
+  // 查不到 → 如果是 RLS 权限问题（列不存在or策略阻挡），显示友好提示
+  if (error && (error.message.includes('row-level') || error.message.includes('policy') || error.message.includes('permission'))) {
+    nameError.value = '系统需要更新数据库后才能使用，请联系管理员 🙏'
+    return
+  }
+
+  // 确实不存在 → 显示申请按钮
+  showApplyBtn.value = true
+  nameError.value = `"${name}" 还未加入，点击下方按钮申请`
+}
+
+// 客户自助申请加入
+async function applyJoin() {
+  const name = nameInput.value.trim()
+  if (!name) return
+  appliedMsg.value = '正在提交申请...'
+
+  // 先查一下这个名字是否已存在
+  const { data: existingName } = await supabase
     .from('customers')
     .select('name')
     .eq('name', name)
     .single()
-  if (error || !data) {
-    nameError.value = '姓名不存在，请联系管理员添加'
+
+  if (existingName) {
+    appliedMsg.value = `"${name}" 已经存在，直接输入姓名登录！如果无法登录，试试清除输入框重新输入 🔙`
     return
   }
-  customerName.value = name
-  localStorage.setItem('cook_customer_name', name)
+
+  // 尝试带 status/applied_at 的完整插入（v2.3.0新方式）
+  const { error } = await supabase.from('customers').insert({
+    name,
+    status: 'pending',
+    applied_at: new Date().toISOString()
+  })
+  if (error) {
+    // RLS 权限错误：引导用户执行迁移脚本
+    if (error.message && (error.message.includes('row-level') || error.message.includes('policy'))) {
+      appliedMsg.value = '系统需要先执行数据库迁移才能使用申请功能。请在 Supabase SQL Editor 中运行 supabase/migration-v2.3.0.sql 🙏'
+      return
+    }
+    // 如果报错是因为列不存在（数据库没迁移），尝试用旧方式只插入name
+    if (error.message && (error.message.includes('status') || error.message.includes('applied_at'))) {
+      // 只插入name（兼容旧数据库结构）
+      const { error: e2 } = await supabase.from('customers').insert({ name })
+      if (e2) {
+        if (e2.message.includes('unique') || e2.code === '23505') {
+          appliedMsg.value = `"${name}" 已经存在，直接输入姓名登录即可！😄`
+        } else if (e2.message.includes('row-level') || e2.message.includes('policy')) {
+          appliedMsg.value = '系统需要更新才能使用申请功能，请在 Supabase SQL Editor 中执行迁移脚本（查看 supabase/migration-v2.3.0.sql）🙏'
+        } else {
+          appliedMsg.value = '申请失败：' + e2.message
+        }
+        return
+      }
+      appliedMsg.value = '申请已提交，请等待管理员通过！快去通知管理员吧 📢'
+      return
+    }
+    appliedMsg.value = '申请失败：' + error.message
+    return
+  }
+  appliedMsg.value = '申请已提交！等管理员通过后，输入姓名就可以点菜啦 🎉'
+}
+
+// 重置登录界面（从申请页面回到登录状态）
+function resetLogin() {
+  showApplyBtn.value = false
+  appliedMsg.value = ''
   nameError.value = ''
-  loadDishes()
-  loadHistory()
+  nameInput.value = ''
+}
+
+// ========== 访问日志 ==========
+async function logAccess(name) {
+  try {
+    await supabase.from('access_logs').insert({
+      customer_name: name,
+      action: 'login',
+      user_agent: navigator.userAgent || ''
+    })
+  } catch (e) {
+    // 表不存在时静默忽略
+  }
+}
+
+// ========== 递纸条（对话界面） ==========
+function switchToChat() {
+  currentTab.value = 'note'
+  loadNoteMessages()
+  clearUnreadCount()
+  startNotePolling()
+}
+
+function startUnreadPolling() {
+  stopUnreadPolling()
+  checkUnreadNotes()
+  unreadPollTimer = setInterval(checkUnreadNotes, 5000)
+}
+
+function stopUnreadPolling() {
+  if (unreadPollTimer) {
+    clearInterval(unreadPollTimer)
+    unreadPollTimer = null
+  }
+}
+
+async function checkUnreadNotes() {
+  if (!customerName.value) return
+  // 从已加载的消息中统计未读条数（管理员发来的、自己没看过的）
+  const { data } = await supabase
+    .from('messages')
+    .select('id')
+    .eq('customer_name', customerName.value)
+    .eq('sender', 'admin')
+    .eq('is_read', false)
+  if (data) {
+    noteUnread.value = data.length
+  }
+}
+
+function clearUnreadCount() {
+  noteUnread.value = 0
+  // 将来打开对话时标记已读
+  if (customerName.value) {
+    supabase
+      .from('messages')
+      .update({ is_read: true })
+      .eq('customer_name', customerName.value)
+      .eq('sender', 'admin')
+      .eq('is_read', false)
+      .then(() => {})
+  }
+}
+
+function startNotePolling() {
+  stopNotePolling()
+  notePollTimer = setInterval(loadNoteMessages, 3000)
+}
+
+function stopNotePolling() {
+  if (notePollTimer) {
+    clearInterval(notePollTimer)
+    notePollTimer = null
+  }
+}
+
+async function loadNoteMessages() {
+  if (!customerName.value) return
+  const { data, error } = await supabase
+    .from('messages')
+    .select('*')
+    .eq('customer_name', customerName.value)
+    .order('created_at', { ascending: true })
+    .limit(100)
+  if (!error && data) {
+    noteMessages.value = data
+    scrollNoteToBottom()
+  }
+}
+
+async function sendNote() {
+  const content = noteContent.value.trim()
+  if (!content || !customerName.value) return
+  sendingNote.value = true
+  const { error } = await supabase.from('messages').insert({
+    customer_name: customerName.value,
+    sender: 'customer',
+    content,
+    is_read: false
+  })
+  sendingNote.value = false
+  if (error) {
+    if (error.message && (error.message.includes('does not exist') || error.message.includes('relation'))) {
+      alert('纸条功能暂不可用，需要在 Supabase 中执行数据库迁移脚本。')
+    } else {
+      alert('发送失败：' + error.message)
+    }
+    return
+  }
+  noteContent.value = ''
+  await loadNoteMessages()
+}
+
+function scrollNoteToBottom() {
+  nextTick(() => {
+    if (noteHistoryRef.value) {
+      noteHistoryRef.value.scrollTop = noteHistoryRef.value.scrollHeight
+    }
+  })
+}
+
+function formatChatTime(dt) {
+  if (!dt) return ''
+  const d = new Date(dt)
+  const now = new Date()
+  const isToday = d.toDateString() === now.toDateString()
+  const time = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+  if (isToday) return time
+  return `${d.getMonth()+1}/${d.getDate()} ${time}`
 }
 
 async function loadDishes() {
@@ -695,6 +977,13 @@ function formatDate(dateStr) {
   font-size: 22px; flex-shrink: 0;
 }
 .top-bar h1 { font-size: 18px; font-weight: 600; flex: 1; }
+.header-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.customer-badge {
+  font-size: 12px; color: rgba(255,255,255,0.9);
+  background: rgba(255,255,255,0.15);
+  padding: 2px 10px; border-radius: 12px; white-space: nowrap;
+  margin-right: 8px;
+}
 .version-in-header {
   font-size: 11px; color: rgba(255,255,255,0.75);
   background: rgba(0,0,0,0.18);
@@ -745,6 +1034,22 @@ function formatDate(dateStr) {
   border: 1px solid #ffccc7;
   margin-bottom: 12px;
   text-align: center;
+}
+.name-error-apply { color: #e55a2b; border-color: #ffd591; background: #fff7e6; }
+.btn-apply {
+  width: 100%; padding: 10px; background: var(--primary); color: #fff;
+  border-radius: 8px; font-weight: 500; margin-top: 4px;
+}
+.applied-msg {
+  margin-top: 10px; padding: 10px; border-radius: 8px;
+  background: #f0faf4; border: 1px solid #b7eb8f;
+  color: #389e0d; font-size: 13px; text-align: center;
+}
+.btn-back-login {
+  width: 100%; padding: 8px; margin-top: 6px;
+  background: transparent; color: var(--primary);
+  border: 1px solid var(--primary); border-radius: 8px;
+  font-size: 13px;
 }
 .name-box button {
   width: 100%; padding: 10px; background: var(--primary); color: #fff;
@@ -1112,4 +1417,82 @@ function formatDate(dateStr) {
   z-index: 100; display: flex;
   align-items: center; justify-content: center;
 }
+
+/* 公告栏 */
+.announcement-bar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px; background: #fff8e8;
+  border-bottom: 1px solid #f0e0c0;
+  overflow: hidden;
+}
+.announcement-scroll-wrap {
+  flex: 1; overflow: hidden; white-space: nowrap;
+}
+.announcement-scroll {
+  display: inline-block;
+  animation: marquee 15s linear infinite;
+}
+@keyframes marquee {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+.announcement-text {
+  font-size: 12px; color: #b8860b;
+}
+
+/* 页签未读数 */
+.tab-unread {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #ff4d4f; color: #fff; font-size: 10px;
+  min-width: 16px; height: 16px; border-radius: 8px;
+  padding: 0 4px; margin-left: 3px; vertical-align: top;
+  font-weight: 600;
+}
+
+/* ========== 递个纸条页签 ========== */
+.note-tab {
+  display: flex; flex-direction: column;
+  height: calc(100vh - 110px);
+  min-height: 0;
+}
+.note-chat-history {
+  flex: 1; overflow-y: auto; padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.chat-empty-tip {
+  text-align: center; color: #aaa; font-size: 14px;
+  padding: 40px 0; margin-top: 40px;
+}
+.note-bubble { max-width: 80%; }
+.note-bubble.mine { align-self: flex-end; }
+.note-bubble.theirs { align-self: flex-start; }
+.bubble-text {
+  padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.5;
+  word-break: break-word;
+}
+.note-bubble.mine .bubble-text {
+  background: var(--primary); color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.note-bubble.theirs .bubble-text {
+  background: #f0f0f0; color: var(--text);
+  border-bottom-left-radius: 4px;
+}
+.bubble-time {
+  font-size: 11px; color: #aaa; margin-top: 4px; padding: 0 4px;
+}
+.note-bubble.mine .bubble-time { text-align: right; }
+.note-input-area {
+  display: flex; gap: 8px; padding: 10px 12px;
+  border-top: 1px solid var(--border); background: #fff;
+}
+.note-input {
+  flex: 1; padding: 10px 14px; border: 1.5px solid #ddd;
+  border-radius: 24px; font-size: 14px;
+}
+.note-send-btn {
+  padding: 10px 20px; background: var(--primary); color: #fff;
+  border-radius: 24px; font-size: 14px; white-space: nowrap;
+}
+.note-send-btn:disabled { opacity: 0.5; }
 </style>

@@ -10,11 +10,13 @@
 import { ref, provide, onMounted } from 'vue'
 import { supabase } from './lib/supabase'
 
-const version = ref('v2.2.4')
+const version = ref('v2.3.0')
 
 const shopSettings = ref({
   shop_name: '阿旺小厨房',
-  logo_url: ''
+  logo_url: '',
+  announcement: '',
+  announcement_enabled: false
 })
 
 async function loadSettings() {
@@ -22,7 +24,9 @@ async function loadSettings() {
   if (data) {
     shopSettings.value = {
       shop_name: data.shop_name || '阿旺小厨房',
-      logo_url: data.logo_url || ''
+      logo_url: data.logo_url || '',
+      announcement: data.announcement || '',
+      announcement_enabled: data.announcement_enabled || false
     }
     // 动态设置浏览器图标和标题
     if (data.logo_url) {

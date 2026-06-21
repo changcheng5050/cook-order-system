@@ -36,6 +36,16 @@ const routes = [
     path: '/admin/settings',
     name: 'AdminSettings',
     component: () => import('../views/AdminSettings.vue')
+  },
+  {
+    path: '/admin/messages',
+    name: 'AdminMessages',
+    component: () => import('../views/AdminMessages.vue')
+  },
+  {
+    path: '/admin/logs',
+    name: 'AdminLogs',
+    component: () => import('../views/AdminLogs.vue')
   }
 ]
 
