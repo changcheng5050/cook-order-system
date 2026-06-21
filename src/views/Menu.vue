@@ -527,16 +527,26 @@ async function verifyName() {
   appliedMsg.value = ''
   nameError.value = ''
 
-  // 先用旧方式查客户是否存在（兼容任何数据库状态）
+  // 查客户是否存在，同时获取 status
   let data, error
   ;({ data, error } = await supabase
     .from('customers')
-    .select('name')
+    .select('name, status')
     .eq('name', name)
     .single())
 
-  // 如果查到客户，直接登录（不管有没有 status 字段）
+  // 如果查到客户
   if (!error && data) {
+    // 待审核状态不能登录
+    if (data.status === 'pending') {
+      nameError.value = `"${name}" 还在审核中，请等待管理员通过 🕐`
+      return
+    }
+    // 已拒绝不能登录
+    if (data.status === 'rejected') {
+      nameError.value = `"${name}" 申请未通过，请联系管理员 🙏`
+      return
+    }
     customerName.value = name
     localStorage.setItem('cook_customer_name', name)
     nameError.value = ''
@@ -564,15 +574,21 @@ async function applyJoin() {
   if (!name) return
   appliedMsg.value = '正在提交申请...'
 
-  // 先查一下这个名字是否已存在
+  // 先查一下这个名字是否已存在，及审核状态
   const { data: existingName } = await supabase
     .from('customers')
-    .select('name')
+    .select('name, status')
     .eq('name', name)
     .single()
 
   if (existingName) {
-    appliedMsg.value = `"${name}" 已经存在，直接输入用户名登录！如果无法登录，试试清除输入框重新输入 🔙`
+    if (existingName.status === 'pending') {
+      appliedMsg.value = `"${name}" 已提交申请，正在审核中，请等待管理员通过 🕐`
+    } else if (existingName.status === 'rejected') {
+      appliedMsg.value = `"${name}" 申请未通过，请联系管理员 🙏`
+    } else {
+      appliedMsg.value = `"${name}" 已经存在，直接输入用户名登录！如果无法登录，试试清除输入框重新输入 🔙`
+    }
     return
   }
 
