@@ -1,15 +1,14 @@
 <template>
   <div class="admin-page">
     <header class="admin-header">
-      <h1>菜品管理</h1>
       <div class="header-actions">
+        <button class="btn-nav active-nav" @click="$router.push('/admin/dishes')">菜品</button>
         <button class="btn-nav" @click="$router.push('/admin/customers')">客户</button>
         <button class="btn-nav" @click="$router.push('/admin/orders')">订单</button>
         <button class="btn-nav" @click="$router.push('/admin/messages')">纸条</button>
         <button class="btn-nav" @click="$router.push('/admin/logs')">日志</button>
         <button class="btn-settings" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
-        <span class="version-badge">v2.3.0</span>
       </div>
     </header>
 

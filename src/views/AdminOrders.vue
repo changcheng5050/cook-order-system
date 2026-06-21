@@ -1,7 +1,6 @@
 <template>
   <div class="admin-page">
     <header class="admin-header">
-      <h1>客户订单</h1>
       <div class="header-actions">
         <button class="btn-nav" @click="$router.push('/admin/dishes')">菜品</button>
         <button class="btn-nav" @click="$router.push('/admin/customers')">客户</button>
@@ -13,7 +12,6 @@
         <button class="btn-batch" @click="toggleBatch">{{ batchMode ? '取消' : '批量删除' }}</button>
         <button v-if="notificationPermission !== 'granted'" class="btn-notify" @click="requestNotificationPermission">🔔 开启通知</button>
         <span v-else class="notify-active">🔔 通知已开启</span>
-        <span class="version-badge">v2.3.0</span>
       </div>
     </header>
 

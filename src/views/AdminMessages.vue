@@ -1,7 +1,6 @@
 <template>
   <div class="admin-msgs">
     <header class="admin-top">
-      <h2>📬 小纸条</h2>
       <div class="top-nav">
         <button class="btn-nav" @click="$router.push('/admin/dishes')">菜品</button>
         <button class="btn-nav" @click="$router.push('/admin/customers')">客户</button>
@@ -10,7 +9,6 @@
         <button class="btn-nav" @click="$router.push('/admin/logs')">日志</button>
         <button class="btn-nav" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
-        <span class="version-badge">v2.3.0</span>
       </div>
     </header>
 
@@ -54,8 +52,12 @@
           </div>
         </div>
         <div class="chat-input">
+          <button class="chat-emoji-btn" @click="showAdminEmoji = !showAdminEmoji">😊</button>
           <input v-model="chatInput" placeholder="回复..." @keyup.enter="sendReply" maxlength="500" />
           <button @click="sendReply" :disabled="!chatInput.trim()">发送</button>
+        </div>
+        <div v-if="showAdminEmoji" class="admin-emoji-picker">
+          <span v-for="e in adminEmojiList" :key="e" class="admin-emoji-item" @click="insertAdminEmoji(e)">{{ e }}</span>
         </div>
       </div>
     </div>
@@ -72,6 +74,8 @@ const chatMessages = ref([])
 const chatInput = ref('')
 const chatRef = ref(null)
 const hoverMsgIdx = ref(null)
+const showAdminEmoji = ref(false)
+const adminEmojiList = ['😊','😂','😘','🥰','😋','😆','🥺','🤤','😎','🥳','👍','👎','👏','🙏','💪','✌️','🎉','❤️','🔥','✅','👌','🤗','🥹','🫶','😜','🤩']
 let pollTimer = null
 
 // 按客户分组，显示最新消息和未读数
@@ -167,6 +171,10 @@ async function sendReply() {
     return
   }
   await   loadMessages()
+}
+
+function insertAdminEmoji(e) {
+  chatInput.value += e
 }
 
 async function deleteConversation(customerName) {
@@ -325,7 +333,10 @@ async function logout() {
   display: flex; flex-direction: column; gap: 10px;
   min-height: 300px; max-height: 400px;
 }
-.chat-msg { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 14px; }
+.chat-msg {
+  max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 14px;
+  line-height: 1.5;
+}
 .chat-msg.customer {
   align-self: flex-start; background: #f0f0f0; color: var(--text);
   border-bottom-left-radius: 4px;
@@ -342,9 +353,16 @@ async function logout() {
 .chat-msg.admin .chat-time { color: rgba(255,255,255,0.6); }
 .chat-empty { text-align: center; color: #aaa; font-size: 13px; padding: 40px 0; }
 .chat-input {
-  display: flex; gap: 8px; padding: 12px 16px;
-  border-top: 1px solid var(--border);
+  display: flex; gap: 8px; padding: 8px 16px;
+  border-top: 1px solid var(--border); align-items: center;
 }
+.chat-emoji-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: transparent; border: none; font-size: 20px;
+  cursor: pointer; flex-shrink: 0; display: flex;
+  align-items: center; justify-content: center;
+}
+.chat-emoji-btn:hover { background: #f0f0f0; }
 .chat-input input {
   flex: 1; padding: 10px 14px; border: 1px solid #ddd;
   border-radius: 24px; font-size: 14px;
@@ -359,4 +377,15 @@ async function logout() {
   padding: 1px 6px; border-radius: 4px;
 }
 .chat-del-btn:hover { background: rgba(255,77,79,0.1); }
+.admin-emoji-picker {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  padding: 8px 16px 4px; max-height: 100px; overflow-y: auto;
+  border-top: 1px solid var(--border);
+}
+.admin-emoji-item {
+  width: 32px; height: 32px; display: flex; align-items: center;
+  justify-content: center; font-size: 18px; border-radius: 6px;
+  cursor: pointer;
+}
+.admin-emoji-item:hover { background: #f0f0f0; }
 </style>

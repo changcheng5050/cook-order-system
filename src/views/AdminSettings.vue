@@ -1,7 +1,6 @@
 <template>
   <div class="admin-page">
     <header class="admin-header">
-      <h1>系统设置</h1>
       <div class="header-actions">
         <button class="btn-nav" @click="$router.push('/admin/dishes')">菜品</button>
         <button class="btn-nav" @click="$router.push('/admin/customers')">客户</button>
@@ -10,7 +9,6 @@
         <button class="btn-nav" @click="$router.push('/admin/logs')">日志</button>
         <button class="btn-settings active-nav" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
-        <span class="version-badge">v2.3.0</span>
       </div>
     </header>
 
@@ -63,6 +61,8 @@
         如需新增管理员，请在登录页点击"注册"，用新邮箱注册后自动成为管理员。
       </p>
     </div>
+
+    <div class="settings-version">阿旺小厨房 v2.3.0</div>
   </div>
 </template>
 
@@ -257,4 +257,8 @@ async function logout() {
   background: #fff8e8; border-radius: 6px; margin-top: 4px;
 }
 .preview-announcement span { color: #e55a2b; }
+.settings-version {
+  text-align: center; padding: 24px 16px 32px;
+  font-size: 12px; color: #bbb;
+}
 </style>

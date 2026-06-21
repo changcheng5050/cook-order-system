@@ -341,8 +341,14 @@
         </div>
       </div>
       <div class="note-input-area">
-        <input v-model="noteContent" placeholder="给阿旺递个小纸条..." @keyup.enter="sendNote" maxlength="500" class="note-input" />
-        <button @click="sendNote" :disabled="sendingNote || !noteContent.trim()" class="note-send-btn">发送</button>
+        <div class="note-input-row">
+          <button class="emoji-btn" @click="showEmojiPicker = !showEmojiPicker" title="表情">😊</button>
+          <input v-model="noteContent" placeholder="给阿旺递个小纸条..." @keyup.enter="sendNote" maxlength="500" class="note-input" />
+          <button @click="sendNote" :disabled="sendingNote || !noteContent.trim()" class="note-send-btn">发送</button>
+        </div>
+        <div v-if="showEmojiPicker" class="emoji-picker">
+          <span v-for="e in emojiList" :key="e" class="emoji-item" @click="insertEmoji(e)">{{ e }}</span>
+        </div>
       </div>
     </div>
 
@@ -422,6 +428,10 @@ const sendingNote = ref(false)
 const noteUnread = ref(0)
 const noteHistoryRef = ref(null)
 const showVersionPopup = ref(false)
+
+// 表情选择器
+const showEmojiPicker = ref(false)
+const emojiList = ['😊','😂','😘','🥰','😋','😆','🥺','🤤','😎','🥳','👍','👎','👏','🙏','💪','✌️','🎉','❤️','🔥','✅','👌','🤗','🥹','🫶','😜','🤩']
 let notePollTimer = null
 let unreadPollTimer = null
 
@@ -717,7 +727,13 @@ async function sendNote() {
     return
   }
   noteContent.value = ''
+  showEmojiPicker.value = false
   await loadNoteMessages()
+}
+
+function insertEmoji(e) {
+  noteContent.value += e
+  showEmojiPicker.value = false
 }
 
 function scrollNoteToBottom() {
@@ -1504,11 +1520,21 @@ function formatDate(dateStr) {
 .note-bubble.mine .bubble-time { text-align: right; }
 .note-input-area {
   position: fixed; left: 0; right: 0; bottom: 0;
-  display: flex; gap: 8px; padding: 10px 12px;
-  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  padding: 8px 12px;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--border); background: #fff;
   z-index: 20; max-width: 480px; margin: 0 auto;
 }
+.note-input-row {
+  display: flex; gap: 8px;
+}
+.emoji-btn {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: var(--bg); border: none; font-size: 20px;
+  cursor: pointer; flex-shrink: 0; display: flex;
+  align-items: center; justify-content: center;
+}
+.emoji-btn:hover { background: #f0f0f0; }
 .note-input {
   flex: 1; padding: 10px 14px; border: 1.5px solid #ddd;
   border-radius: 24px; font-size: 14px;
@@ -1518,4 +1544,14 @@ function formatDate(dateStr) {
   border-radius: 24px; font-size: 14px; white-space: nowrap;
 }
 .note-send-btn:disabled { opacity: 0.5; }
+.emoji-picker {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  padding: 8px 4px 2px; max-height: 120px; overflow-y: auto;
+}
+.emoji-item {
+  width: 34px; height: 34px; display: flex; align-items: center;
+  justify-content: center; font-size: 18px; border-radius: 6px;
+  cursor: pointer;
+}
+.emoji-item:hover { background: #f0f0f0; }
 </style>

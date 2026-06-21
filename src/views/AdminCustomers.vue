@@ -1,7 +1,6 @@
 <template>
   <div class="admin-customers">
     <header class="admin-top">
-      <h2>客户管理</h2>
       <div class="top-nav">
         <button class="btn-nav" @click="$router.push('/admin/dishes')">菜品</button>
         <button class="btn-nav active-nav" @click="$router.push('/admin/customers')">客户</button>
@@ -10,7 +9,6 @@
         <button class="btn-nav" @click="$router.push('/admin/logs')">日志</button>
         <button class="btn-nav" @click="$router.push('/admin/settings')">设置</button>
         <button class="btn-logout" @click="logout">退出</button>
-        <span class="version-badge">v2.3.0</span>
       </div>
     </header>
 
