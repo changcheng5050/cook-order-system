@@ -2,12 +2,11 @@
   <div class="menu-page">
     <!-- 顶部标题栏 -->
     <header class="top-bar">
-      <img v-if="settings.logo_url" :src="settings.logo_url" class="logo" @error="onLogoError" />
-      <div v-else class="logo-default">🍳</div>
+      <img v-if="settings.logo_url" :src="settings.logo_url" class="logo" @error="onLogoError" @dblclick="showVersionPopup = true" />
+      <div v-else class="logo-default" @dblclick="showVersionPopup = true">🍳</div>
       <h1>{{ settings.shop_name }}</h1>
       <div class="header-right">
-        <span v-if="customerName" class="customer-badge">👋 {{ customerName }}</span>
-        <span class="version-in-header">{{ version }}</span>
+        <span v-if="customerName" class="customer-badge">💎 {{ customerName }}</span>
       </div>
     </header>
 
@@ -23,8 +22,8 @@
         <div v-if="!customerName" class="name-modal">
           <div class="name-box">
             <h2>🍳 {{ settings.shop_name }}</h2>
-            <p class="welcome-text">欢迎光临，请输入您的姓名</p>
-            <input v-model="nameInput" placeholder="请输入姓名" @keyup.enter="verifyName" />
+            <p class="welcome-text">欢迎光临，请输入您的用户名</p>
+            <input v-model="nameInput" placeholder="请输入用户名" @keyup.enter="verifyName" />
             <div v-if="nameError && !showApplyBtn" class="name-error">{{ nameError }}</div>
             <div v-if="nameError && showApplyBtn" class="name-error name-error-apply">{{ nameError }}</div>
             <button @click="verifyName" v-if="!showApplyBtn">进入菜单</button>
@@ -41,19 +40,19 @@
         <button
           :class="['tab-btn', { active: currentTab === 'menu' }]"
           @click="currentTab = 'menu'"
-        >🍽️ 点菜</button>
+        >🥢 点菜</button>
         <button
           :class="['tab-btn', { active: currentTab === 'history' }]"
           @click="currentTab = 'history'"
-        >📋 历史点菜</button>
+        >⏰ 历史</button>
         <button
           :class="['tab-btn', { active: currentTab === 'note' }]"
           @click="switchToChat"
-        >✉️ 递个纸条
+        >💬 递个纸条
           <span v-if="noteUnread > 0" class="tab-unread">{{ noteUnread }}</span>
         </button>
       </div>
-      <button class="logout-btn" @click="doLogout">退出登录</button>
+      <button class="logout-btn" @click="doLogout">退出</button>
     </nav>
 
     <!-- ========== 点菜页签 ========== -->
@@ -352,8 +351,18 @@
       <div class="modal-box kicked-out-box">
         <div class="kicked-out-icon">🚫</div>
         <h2>您的账号已被移除</h2>
-        <p>请联系管理员重新添加您到客户名单</p>
+        <p>请联系管理员重新添加您到用户名单</p>
         <button class="btn-confirm" @click="kickedOut = false">我知道了</button>
+      </div>
+    </div>
+
+    <!-- 版本号弹窗（双击logo触发） -->
+    <div v-if="showVersionPopup" class="modal-mask" @click.self="showVersionPopup = false">
+      <div class="modal-box version-popup" @click="showVersionPopup = false">
+        <div class="vp-logo">🍳</div>
+        <div class="vp-name">{{ settings.shop_name }}</div>
+        <div class="vp-version">{{ version }}</div>
+        <div class="vp-hint">点击任意位置关闭</div>
       </div>
     </div>
   </div>
@@ -412,6 +421,7 @@ const noteContent = ref('')
 const sendingNote = ref(false)
 const noteUnread = ref(0)
 const noteHistoryRef = ref(null)
+const showVersionPopup = ref(false)
 let notePollTimer = null
 let unreadPollTimer = null
 
@@ -552,7 +562,7 @@ async function applyJoin() {
     .single()
 
   if (existingName) {
-    appliedMsg.value = `"${name}" 已经存在，直接输入姓名登录！如果无法登录，试试清除输入框重新输入 🔙`
+    appliedMsg.value = `"${name}" 已经存在，直接输入用户名登录！如果无法登录，试试清除输入框重新输入 🔙`
     return
   }
 
@@ -574,7 +584,7 @@ async function applyJoin() {
       const { error: e2 } = await supabase.from('customers').insert({ name })
       if (e2) {
         if (e2.message.includes('unique') || e2.code === '23505') {
-          appliedMsg.value = `"${name}" 已经存在，直接输入姓名登录即可！😄`
+          appliedMsg.value = `"${name}" 已经存在，直接输入用户名登录即可！😄`
         } else if (e2.message.includes('row-level') || e2.message.includes('policy')) {
           appliedMsg.value = '系统需要更新才能使用申请功能，请在 Supabase SQL Editor 中执行迁移脚本（查看 supabase/migration-v2.3.0.sql）🙏'
         } else {
@@ -588,7 +598,7 @@ async function applyJoin() {
     appliedMsg.value = '申请失败：' + error.message
     return
   }
-  appliedMsg.value = '申请已提交！等管理员通过后，输入姓名就可以点菜啦 🎉'
+  appliedMsg.value = '申请已提交！等管理员通过后，输入用户名就可以点菜啦 🎉'
 }
 
 // 重置登录界面（从申请页面回到登录状态）
@@ -723,9 +733,11 @@ function formatChatTime(dt) {
   const d = new Date(dt)
   const now = new Date()
   const isToday = d.toDateString() === now.toDateString()
+  const sameYear = d.getFullYear() === now.getFullYear()
   const time = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
   if (isToday) return time
-  return `${d.getMonth()+1}/${d.getDate()} ${time}`
+  if (sameYear) return `${d.getMonth()+1}/${d.getDate()} ${time}`
+  return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${time}`
 }
 
 async function loadDishes() {
@@ -977,18 +989,12 @@ function formatDate(dateStr) {
   font-size: 22px; flex-shrink: 0;
 }
 .top-bar h1 { font-size: 18px; font-weight: 600; flex: 1; }
-.header-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.header-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: auto; margin-right: -10px; }
 .customer-badge {
   font-size: 12px; color: rgba(255,255,255,0.9);
   background: rgba(255,255,255,0.15);
   padding: 2px 10px; border-radius: 12px; white-space: nowrap;
   margin-right: 8px;
-}
-.version-in-header {
-  font-size: 11px; color: rgba(255,255,255,0.75);
-  background: rgba(0,0,0,0.18);
-  padding: 3px 8px; border-radius: 10px;
-  white-space: nowrap; flex-shrink: 0;
 }
 
 /* 页签导航 */
@@ -1406,6 +1412,19 @@ function formatDate(dateStr) {
   text-align: center; padding: 24px 16px;
   color: #999; font-size: 13px;
 }
+/* 版本号弹窗 */
+.version-popup {
+  text-align: center; padding: 32px 24px !important;
+}
+.vp-logo { font-size: 48px; margin-bottom: 8px; }
+.vp-name { font-size: 16px; font-weight: 500; margin-bottom: 4px; }
+.vp-version {
+  font-size: 14px; color: var(--text-secondary);
+  background: var(--border); display: inline-block;
+  padding: 2px 14px; border-radius: 10px; margin: 8px auto;
+}
+.vp-hint { font-size: 12px; color: #bbb; margin-top: 4px; }
+
 /* 回到顶部按钮 */
 .back-to-top {
   position: fixed; bottom: 80px; right: 20px;

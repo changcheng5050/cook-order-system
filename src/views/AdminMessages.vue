@@ -222,9 +222,11 @@ function formatChatTime(dt) {
   const d = new Date(dt)
   const now = new Date()
   const isToday = d.toDateString() === now.toDateString()
+  const sameYear = d.getFullYear() === now.getFullYear()
   const time = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
   if (isToday) return time
-  return `${d.getMonth()+1}/${d.getDate()} ${time}`
+  if (sameYear) return `${d.getMonth()+1}/${d.getDate()} ${time}`
+  return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${time}`
 }
 
 async function logout() {

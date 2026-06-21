@@ -42,7 +42,7 @@
     <div class="add-section">
       <h3>📝 新增客户</h3>
       <div class="add-form">
-        <input v-model="newName" placeholder="客户姓名 *" class="form-input" />
+        <input v-model="newName" placeholder="用户名 *" class="form-input" />
         <input v-model="newPhone" placeholder="手机号（选填）" class="form-input" />
         <input v-model="newAddress" placeholder="地址（选填）" class="form-input" />
         <input v-model="newNote" placeholder="备注（选填）" class="form-input" />
@@ -55,7 +55,7 @@
     <div class="list-section">
       <div class="list-header">
         <h3>已通过（共 {{ approvedCustomers.length }} 人）</h3>
-        <input v-model="searchKey" placeholder="🔍 搜索姓名/手机号..." class="search-input" />
+        <input v-model="searchKey" placeholder="🔍 搜索用户名/手机号..." class="search-input" />
       </div>
       <div v-if="filteredCustomers.length === 0" class="empty-tip">未找到匹配客户</div>
       <div v-for="c in filteredCustomers" :key="c.id" class="customer-card">
@@ -152,7 +152,7 @@ async function loadCustomers() {
 async function addCustomer() {
   const name = newName.value.trim()
   if (!name) {
-    addError.value = '客户姓名不能为空'
+    addError.value = '用户名不能为空'
     return
   }
   addError.value = ''
@@ -166,7 +166,7 @@ async function addCustomer() {
   if (error) {
     console.error('添加客户失败:', error)
     if (error.message.includes('unique') || error.code === '23505') {
-      addError.value = '该客户姓名已存在'
+      addError.value = '该用户名已存在'
     } else {
       addError.value = '添加失败：' + error.message
     }

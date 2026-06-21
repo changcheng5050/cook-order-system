@@ -19,7 +19,7 @@
 
     <!-- 筛选 -->
     <div class="toolbar">
-      <input v-model="searchName" placeholder="搜索客户姓名" class="search-input" />
+      <input v-model="searchName" placeholder="搜索用户名" class="search-input" />
       <select v-model="customerFilter" class="filter-select">
         <option value="">全部客户</option>
         <option v-for="name in customerOptions" :key="name" :value="name">{{ name }}</option>

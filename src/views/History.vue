@@ -7,7 +7,7 @@
 
     <!-- 客户姓名输入（白名单验证） -->
     <div v-if="!customerName" class="name-section">
-      <input v-model="nameInput" placeholder="请输入您的姓名" @keyup.enter="verifyName" />
+      <input v-model="nameInput" placeholder="请输入您的用户名" @keyup.enter="verifyName" />
       <p v-if="nameError" class="name-error">{{ nameError }}</p>
       <button @click="verifyName">查看历史</button>
     </div>
@@ -104,7 +104,7 @@ async function verifyAndLoad(name) {
     .eq('name', name)
     .single()
   if (error || !data) {
-    nameError.value = '姓名不存在，请联系厨师'
+    nameError.value = '用户名不存在，请联系厨师'
     customerName.value = ''
     localStorage.removeItem('cook_customer_name')
     return
