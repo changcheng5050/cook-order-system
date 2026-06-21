@@ -45,6 +45,38 @@
         <span class="slider"></span>
       </label>
 
+      <h2 style="margin-top: 20px;">功能管理</h2>
+      <p class="hint-text">关闭后，客户端导航栏上对应的功能页签将隐藏</p>
+
+      <label class="switch-row">
+        <span><span class="tab-icon">🥢</span> 点菜</span>
+        <label class="switch">
+          <input type="checkbox" v-model="form.tab_menu_enabled" />
+          <span class="slider"></span>
+        </label>
+      </label>
+      <label class="switch-row">
+        <span><span class="tab-icon">⏰</span> 历史</span>
+        <label class="switch">
+          <input type="checkbox" v-model="form.tab_history_enabled" />
+          <span class="slider"></span>
+        </label>
+      </label>
+      <label class="switch-row">
+        <span><span class="tab-icon">🎰</span> 摇菜</span>
+        <label class="switch">
+          <input type="checkbox" v-model="form.tab_roll_enabled" />
+          <span class="slider"></span>
+        </label>
+      </label>
+      <label class="switch-row">
+        <span><span class="tab-icon">💬</span> 递个纸条</span>
+        <label class="switch">
+          <input type="checkbox" v-model="form.tab_note_enabled" />
+          <span class="slider"></span>
+        </label>
+      </label>
+
       <button class="btn-save" @click="saveSettings" :disabled="saving">
         {{ saving ? '保存中...' : '保存设置' }}
       </button>
@@ -105,7 +137,11 @@ async function loadSettings() {
       logo_url: data.logo_url || '',
       announcement: data.announcement || '',
       announcement_enabled: data.announcement_enabled || false,
-      show_back_to_top: data.show_back_to_top !== false
+      show_back_to_top: data.show_back_to_top !== false,
+      tab_menu_enabled: data.tab_menu_enabled !== false,
+      tab_history_enabled: data.tab_history_enabled !== false,
+      tab_roll_enabled: data.tab_roll_enabled !== false,
+      tab_note_enabled: data.tab_note_enabled !== false
     }
   }
 }
@@ -153,7 +189,11 @@ async function saveSettings() {
       logo_url: form.value.logo_url,
       announcement: form.value.announcement,
       announcement_enabled: form.value.announcement_enabled,
-      show_back_to_top: form.value.show_back_to_top
+      show_back_to_top: form.value.show_back_to_top,
+      tab_menu_enabled: form.value.tab_menu_enabled,
+      tab_history_enabled: form.value.tab_history_enabled,
+      tab_roll_enabled: form.value.tab_roll_enabled,
+      tab_note_enabled: form.value.tab_note_enabled
     })
     .eq('id', 1)
     .select('*', { count: 'exact' })
@@ -244,6 +284,8 @@ async function logout() {
 }
 .btn-save:disabled { opacity: 0.6; }
 .save-msg { text-align: center; margin-top: 8px; font-size: 13px; }
+.hint-text { font-size: 12px; color: var(--text-secondary); margin: -8px 0 12px; }
+.tab-icon { font-size: 16px; margin-right: 4px; }
 .announcement-input {
   width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px;
   font-size: 13px; resize: vertical; box-sizing: border-box;

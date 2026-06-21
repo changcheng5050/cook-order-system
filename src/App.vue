@@ -22,11 +22,16 @@ const shopSettings = ref({
 async function loadSettings() {
   const { data } = await supabase.from('settings').select('*').single()
   if (data) {
+    // 保留所有数据库返回的字段 + 默认值
     shopSettings.value = {
       shop_name: data.shop_name || '阿旺小厨房',
       logo_url: data.logo_url || '',
       announcement: data.announcement || '',
-      announcement_enabled: data.announcement_enabled || false
+      announcement_enabled: data.announcement_enabled || false,
+      tab_menu_enabled: data.tab_menu_enabled !== false,
+      tab_history_enabled: data.tab_history_enabled !== false,
+      tab_roll_enabled: data.tab_roll_enabled !== false,
+      tab_note_enabled: data.tab_note_enabled !== false
     }
     // 动态设置浏览器图标和标题
     if (data.logo_url) {

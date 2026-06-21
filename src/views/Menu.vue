@@ -40,15 +40,19 @@
         <button
           :class="['tab-btn', { active: currentTab === 'menu' }]"
           @click="currentTab = 'menu'"
-        >🥢 点菜</button>
+        v-if="settings.tab_menu_enabled !== false">🥢 点菜</button>
         <button
           :class="['tab-btn', { active: currentTab === 'history' }]"
           @click="currentTab = 'history'"
-        >⏰ 历史</button>
+        v-if="settings.tab_history_enabled !== false">⏰ 历史</button>
+        <button
+          :class="['tab-btn', { active: currentTab === 'roll' }]"
+          @click="currentTab = 'roll'"
+        v-if="settings.tab_roll_enabled !== false">🎰 摇菜</button>
         <button
           :class="['tab-btn', { active: currentTab === 'note' }]"
           @click="switchToChat"
-        >💬 递个纸条
+        v-if="settings.tab_note_enabled !== false">💬 递个纸条
           <span v-if="noteUnread > 0" class="tab-unread">{{ noteUnread }}</span>
         </button>
       </div>
@@ -362,6 +366,71 @@
       </div>
     </div>
 
+    <!-- ========== 摇菜页签 ========== -->
+    <div v-if="customerName && currentTab === 'roll'" class="roll-tab">
+      <div class="roll-section">
+        <div class="roll-header">
+          <span class="roll-header-icon">🎰</span>
+          <div>
+            <div class="roll-header-title">不知道吃啥？那就凭运气吧！</div>
+            <div class="roll-subtitle">选中分类，点击摇一摇，命运替你决定～</div>
+          </div>
+        </div>
+        <div class="roll-categories">
+          <label v-for="cat in allCategories" :key="cat" :class="['roll-cat-label', 'roll-cat-' + cat]">
+            <input type="checkbox" :value="cat" v-model="rollSelectedCats" />
+            {{ cat }}
+          </label>
+          <span class="roll-cat-hint">不选 = 全部</span>
+        </div>
+
+        <div class="roll-machine">
+          <div class="roll-window">
+            <div class="roll-col">
+              <div class="roll-col-label">类</div>
+              <div class="roll-col-value roll-col-value-cat">
+                <span v-if="rollDisplayCat && rollDisplayCat !== '?'" :class="['roll-cat-badge', 'badge-' + rollDisplayCat]">{{ rollDisplayCat }}</span>
+                <span v-else style="font-size:24px;">?</span>
+              </div>
+            </div>
+            <div class="roll-col roll-col-main">
+              <div v-if="!hasRolled" class="roll-col-label">🎰 摇一摇</div>
+              <div v-else class="roll-col-label roll-col-label-win">🎯 摇到啦</div>
+              <div class="roll-col-value roll-col-img">
+                <img v-if="rollDisplayImg" :src="rollDisplayImg" class="roll-result-img" />
+                <span v-else style="font-size:32px;">🍽️</span>
+              </div>
+            </div>
+            <div class="roll-col">
+              <div class="roll-col-label">菜名</div>
+              <div class="roll-col-value roll-col-value-name">{{ rollDisplayName }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="roll-btn-row">
+          <button class="roll-btn-go" @click="doRoll" :disabled="rollRolling">🎰 {{ rollRolling ? '摇动中...' : '摇一下！' }}</button>
+        </div>
+        <div v-if="rollResultName" class="roll-btn-row">
+          <button class="roll-btn-add" @click="addRollToCart">🍽️ 加到餐桌</button>
+        </div>
+
+        <p v-if="rollCountMsg" class="roll-count">{{ rollCountMsg }}</p>
+        <p v-if="rollAddedMsg" class="roll-added-msg">{{ rollAddedMsg }}</p>
+
+        <!-- 已选菜品列表 -->
+        <div v-if="cartItems.length > 0" class="roll-cart-list">
+          <div class="roll-cart-title">🛒 已选菜品（{{ cartItems.length }}道）</div>
+          <div v-for="(item, idx) in cartItems" :key="idx" class="roll-cart-item">
+            <span :class="['roll-cart-tag', 'tag-' + (item.category || '其他')]">{{ item.category || '其他' }}</span>
+            <span class="roll-cart-name">{{ item.name }}</span>
+            <span class="roll-cart-qty">×{{ item.quantity || 1 }}</span>
+            <span class="roll-cart-del" @click="removeFromCart(item.id)">✕</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 版本号弹窗（双击logo触发） -->
     <div v-if="showVersionPopup" class="modal-mask" @click.self="showVersionPopup = false">
       <div class="modal-box version-popup" @click="showVersionPopup = false">
@@ -428,6 +497,20 @@ const sendingNote = ref(false)
 const noteUnread = ref(0)
 const noteHistoryRef = ref(null)
 const showVersionPopup = ref(false)
+
+// 摇菜
+const rollSelectedCats = ref([])
+const rollResultName = ref('')
+const rollResultCat = ref('')
+const rollResultImg = ref('')
+const rollRolling = ref(false)
+const rollCountMsg = ref('')
+const rollAddedMsg = ref('')
+// 滚动显示的临时值（用于动画）
+const rollDisplayName = ref('?')
+const rollDisplayCat = ref('?')
+const rollDisplayImg = ref('')
+const hasRolled = ref(false)
 
 // 表情选择器
 const showEmojiPicker = ref(false)
@@ -856,6 +939,90 @@ function doLogout() {
   customerName.value = ''
   currentTab.value = 'menu'
   orders.value = []
+}
+
+// ========== 摇菜（老虎机） ==========
+const allCategories = computed(() => {
+  const cats = new Set(dishes.value.map(d => d.category).filter(Boolean))
+  return Array.from(cats)
+})
+// 菜品加载后自动全选所有分类
+watch(allCategories, (cats) => {
+  if (cats.length > 0 && rollSelectedCats.value.length === 0) {
+    rollSelectedCats.value = [...cats]
+  }
+}, { immediate: false })
+
+const rollEligibleDishes = computed(() => {
+  const selected = rollSelectedCats.value
+  if (selected.length === 0) return dishes.value
+  return dishes.value.filter(d => selected.includes(d.category))
+})
+
+function doRoll() {
+  const pool = rollEligibleDishes.value
+  if (pool.length === 0) {
+    rollCountMsg.value = '当前分类没有可选菜品，请换个分类试试'
+    return
+  }
+  rollRolling.value = true
+  rollResultName.value = ''
+  rollResultCat.value = ''
+  rollResultImg.value = ''
+  rollCountMsg.value = ''
+  rollAddedMsg.value = ''
+
+  // 滚动动画：整体2秒内出结果
+  const startTime = Date.now()
+  const duration = 1800  // 1.8秒快速滚动，然后出结果
+  function tickRoll() {
+    const elapsed = Date.now() - startTime
+    const r = pool[Math.floor(Math.random() * pool.length)]
+    rollDisplayName.value = r.name
+    rollDisplayCat.value = r.category || ''
+    rollDisplayImg.value = r.image_url || ''
+    if (elapsed >= duration) {
+      hasRolled.value = true
+      const winner = pool[Math.floor(Math.random() * pool.length)]
+      rollResultName.value = winner.name
+      rollResultCat.value = winner.category || ''
+      rollResultImg.value = winner.image_url || ''
+      rollDisplayName.value = winner.name
+      rollDisplayCat.value = winner.category || ''
+      rollDisplayImg.value = winner.image_url || ''
+      rollRolling.value = false
+      const sel = rollSelectedCats.value
+      const label = sel.length === 1 ? sel[0] : '全部'
+      rollCountMsg.value = `${label} · 共 ${pool.length} 道菜可选`
+      return
+    }
+      // 逐渐减速：进度越往后间隔越长
+      const progress = elapsed / duration  // 0~1
+      const delay = 30 + progress * progress * 200
+      setTimeout(tickRoll, delay)
+  }
+  tickRoll()
+}
+
+function addRollToCart() {
+  if (!rollResultName.value) return
+  const dish = dishes.value.find(d => d.name === rollResultName.value)
+  if (!dish) return
+  addToCart(dish)
+  rollAddedMsg.value = `🍽️ 「${rollResultName.value}」已加入餐桌 ✓`
+  setTimeout(() => { rollAddedMsg.value = '' }, 2500)
+}
+
+function resetRoll() {
+  rollResultName.value = ''
+  rollResultCat.value = ''
+  rollResultImg.value = ''
+  rollDisplayName.value = '?'
+  rollDisplayCat.value = '?'
+  rollDisplayImg.value = ''
+  hasRolled.value = false
+  rollCountMsg.value = ''
+  rollAddedMsg.value = ''
 }
 
 const filteredDishes = computed(() => {
@@ -1444,6 +1611,122 @@ function formatDate(dateStr) {
   text-align: center; padding: 24px 16px;
   color: #999; font-size: 13px;
 }
+
+/* 摇菜 */
+.roll-tab { padding: 16px; }
+.roll-section {
+  background: var(--color-background-primary); border-radius: var(--border-radius-lg);
+  border: 0.5px solid var(--color-border-tertiary); padding: 24px;
+  max-width: 400px; margin: 0 auto;
+}
+.roll-subtitle { font-size: 13px; color: var(--text-secondary); margin: 0; }
+.roll-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.roll-header-icon { font-size: 32px; }
+.roll-header-title { font-size: 17px; font-weight: 600; color: #d85a30; }
+
+/* 分类标签 - 彩色标签（和点菜页面统一） */
+.roll-categories {
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 18px;
+}
+.roll-cat-label {
+  display: flex; align-items: center; gap: 4px; font-size: 13px; cursor: pointer;
+  padding: 4px 10px; border-radius: 6px;
+}
+.roll-cat-label input { width: 16px; height: 16px; }
+.roll-cat-hint { font-size: 12px; color: #bbb; margin-left: 4px; }
+.roll-cat-荤 { background: #fcebeb; color: #a32d2d; border: 1px solid #f7c1c1; }
+.roll-cat-荤 input { accent-color: #a32d2d; }
+.roll-cat-素 { background: #eaf3de; color: #3b6d11; border: 1px solid #c0dd97; }
+.roll-cat-素 input { accent-color: #3b6d11; }
+.roll-cat-汤 { background: #e6f1fb; color: #185fa5; border: 1px solid #b5d4f4; }
+.roll-cat-汤 input { accent-color: #185fa5; }
+.roll-cat-粉面 { background: #faeeda; color: #854f0b; border: 1px solid #fac775; }
+.roll-cat-粉面 input { accent-color: #854f0b; }
+.roll-cat-主食 { background: #eeedfe; color: #3c3489; border: 1px solid #cecbf6; }
+.roll-cat-主食 input { accent-color: #3c3489; }
+.roll-cat-凉菜 { background: #e1f5ee; color: #0f6e56; border: 1px solid #9fe1cb; }
+.roll-cat-凉菜 input { accent-color: #0f6e56; }
+.roll-cat-小食 { background: #fbeaf0; color: #993556; border: 1px solid #f4c0d1; }
+.roll-cat-小食 input { accent-color: #993556; }
+
+/* 老虎机窗口 */
+.roll-machine {
+  background: #f5f5f5; border-radius: 12px; padding: 20px;
+  border: 2px solid #ddd; margin-bottom: 18px;
+}
+.roll-window {
+  display: flex; gap: 10px; justify-content: center;
+}
+.roll-col {
+  flex: 1; max-width: 80px; overflow: hidden; border-radius: 10px;
+  background: #fff; border: 1px solid #eee; text-align: center;
+}
+.roll-col-main { flex: 2; max-width: none; border-color: #d85a30; border-width: 2px; }
+.roll-col-label {
+  padding: 4px; font-size: 12px; color: #888;
+  background: #f5f5f5; border-radius: 8px 8px 0 0;
+}
+.roll-col-label-win { background: #fff3e0; color: #d85a30; }
+.roll-col-value { padding: 10px 6px; text-align: center; }
+.roll-col-value-cat { font-size: 24px; padding: 36px 6px; display: flex; align-items: center; justify-content: center; }
+.roll-cat-badge {
+  display: inline-block; padding: 6px 12px; border-radius: 6px;
+  font-size: 14px; font-weight: 500;
+}
+.badge-荤 { background: #fcebeb; color: #a32d2d; }
+.badge-素 { background: #eaf3de; color: #3b6d11; }
+.badge-汤 { background: #e6f1fb; color: #185fa5; }
+.badge-粉面 { background: #faeeda; color: #854f0b; }
+.badge-主食 { background: #eeedfe; color: #3c3489; }
+.badge-凉菜 { background: #e1f5ee; color: #0f6e56; }
+.badge-小食 { background: #fbeaf0; color: #993556; }
+.roll-col-value-name { font-size: 18px; font-weight: 500; padding: 30px 6px; word-break: break-all; }
+.roll-col-img {
+  padding: 6px; display: flex; align-items: center; justify-content: center; min-height: 90px;
+}
+.roll-result-img {
+  width: 90px; height: 90px; border-radius: 8px; object-fit: cover; display: block;
+}
+
+/* 按钮 */
+.roll-btn-row { text-align: center; }
+.roll-btn-row + .roll-btn-row { margin-top: 8px; }
+.roll-btn-go {
+  background: var(--primary); color: #fff; font-size: 16px; font-weight: 500;
+  padding: 12px 44px; border-radius: 12px; margin-bottom: 0;
+}
+.roll-btn-go:disabled { opacity: 0.6; }
+.roll-btn-add {
+  background: #e3f2fd; color: #1565c0; font-size: 14px; font-weight: 500;
+  padding: 10px 28px; border-radius: 10px; border: 1px solid #bbdefb;
+}
+.roll-count { font-size: 12px; color: #bbb; text-align: center; margin: 12px 0 14px; }
+.roll-added-msg {
+  text-align: center; font-size: 13px; color: var(--success); margin-top: 8px;
+}
+
+/* 已选菜品列表 */
+.roll-cart-list { border-top: 1px solid #eee; padding-top: 12px; }
+.roll-cart-title { font-size: 14px; font-weight: 500; margin-bottom: 10px; }
+.roll-cart-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; background: #fafafa; border-radius: 8px; margin-bottom: 6px;
+}
+.roll-cart-tag {
+  font-size: 12px; padding: 2px 8px; border-radius: 4px; flex-shrink: 0;
+}
+.roll-cart-tag.tag-荤 { background: #fcebeb; color: #a32d2d; }
+.roll-cart-tag.tag-素 { background: #eaf3de; color: #3b6d11; }
+.roll-cart-tag.tag-汤 { background: #e6f1fb; color: #185fa5; }
+.roll-cart-tag.tag-粉面 { background: #faeeda; color: #854f0b; }
+.roll-cart-tag.tag-主食 { background: #eeedfe; color: #3c3489; }
+.roll-cart-tag.tag-凉菜 { background: #e1f5ee; color: #0f6e56; }
+.roll-cart-tag.tag-小食 { background: #fbeaf0; color: #993556; }
+.roll-cart-name { flex: 1; font-size: 14px; }
+.roll-cart-qty { font-size: 13px; color: #999; flex-shrink: 0; }
+.roll-cart-del { font-size: 14px; color: #ccc; cursor: pointer; flex-shrink: 0; }
+.roll-cart-del:hover { color: #e55a2b; }
+
 /* 版本号弹窗 */
 .version-popup {
   text-align: center; padding: 32px 24px !important;
