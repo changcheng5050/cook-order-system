@@ -772,6 +772,20 @@ async function logAccess(name) {
   }
 }
 
+// ========== 摇菜日志 ==========
+async function logRoll(name, dishName, category) {
+  try {
+    await supabase.from('access_logs').insert({
+      customer_name: name,
+      action: 'roll',
+      detail: `🎰 摇到：${dishName}（${category}）`,
+      user_agent: navigator.userAgent || ''
+    })
+  } catch (e) {
+    // 静默忽略
+  }
+}
+
 // ========== 递纸条（对话界面） ==========
 function switchToChat() {
   currentTab.value = 'note'
@@ -1037,6 +1051,8 @@ function doRoll() {
       rollDisplayCat.value = winner.category || ''
       rollDisplayImg.value = winner.image_url || ''
       rollRolling.value = false
+      // 记录摇菜日志（异步，不影响体验）
+      logRoll(customerName.value, winner.name, winner.category || '')
       const sel = rollSelectedCats.value
       const label = sel.length === 1 ? sel[0] : '全部'
       rollCountMsg.value = `${label} · 共 ${pool.length} 道菜可选`

@@ -12,8 +12,32 @@
       </div>
     </header>
 
+    <!-- 摇菜统计面板 -->
+    <div class="roll-stats" v-if="rollStats.total > 0">
+      <div class="stats-title">🎰 摇菜统计</div>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-num">{{ rollStats.total }}</div>
+          <div class="stat-label">总摇菜次数</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">{{ rollStats.today }}</div>
+          <div class="stat-label">今日摇菜</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">{{ rollStats.topCustomer }}</div>
+          <div class="stat-label">最爱摇菜的客户</div>
+        </div>
+      </div>
+    </div>
+
     <div class="log-controls">
-      <input v-model="searchName" placeholder="🔍 搜索客户名..." class="search-input" />
+      <input v-model="searchName" placeholder="🔍 搜索..." class="search-input" />
+      <select v-model="actionFilter" class="action-filter">
+        <option value="">全部</option>
+        <option value="login">登录</option>
+        <option value="roll">摇菜</option>
+      </select>
       <button class="btn-refresh" @click="loadLogs">🔄 刷新</button>
       <button class="btn-batch-del" :class="{ active: batchMode }" @click="toggleBatch">
         {{ batchMode ? '取消' : '批量删除' }}
@@ -44,8 +68,9 @@
         <input v-if="batchMode" type="checkbox" :checked="selectedIds.includes(log.id)" @change="toggleSelect(log.id)" class="log-checkbox" />
         <div class="log-avatar">{{ log.customer_name.charAt(0).toUpperCase() }}</div>
         <div class="log-info">
-          <div class="log-name">{{ log.customer_name }}</div>
+          <div class="log-name">{{ log.customer_name }} <span :class="['log-action', 'action-' + log.action]">{{ log.action === 'roll' ? '🎰摇菜' : '🔑登录' }}</span></div>
           <div class="log-time">{{ formatTime(log.created_at) }}</div>
+          <div v-if="log.detail" class="log-detail">{{ log.detail }}</div>
           <div v-if="log.location" class="log-location">📍 {{ log.location }}</div>
           <div v-if="log.ip_address" class="log-ip">{{ log.ip_address }}</div>
         </div>
@@ -70,15 +95,23 @@ import { supabase } from '../lib/supabase'
 
 const logs = ref([])
 const searchName = ref('')
+const actionFilter = ref('')
 const currentPage = ref(1)
 const pageSize = 30
 const batchMode = ref(false)
 const selectedIds = ref([])
+const rollStats = ref({ total: 0, today: 0, topCustomer: '-' })
 
 const filteredLogs = computed(() => {
-  if (!searchName.value) return logs.value
-  const key = searchName.value.toLowerCase()
-  return logs.value.filter(l => l.customer_name.toLowerCase().includes(key))
+  let list = logs.value
+  if (searchName.value) {
+    const key = searchName.value.toLowerCase()
+    list = list.filter(l => l.customer_name.toLowerCase().includes(key))
+  }
+  if (actionFilter.value) {
+    list = list.filter(l => l.action === actionFilter.value)
+  }
+  return list
 })
 
 const totalCount = computed(() => filteredLogs.value.length)
@@ -166,6 +199,27 @@ async function loadLogs() {
     .limit(500)
   if (!error) {
     logs.value = data || []
+    // 计算摇菜统计
+    const rollLogs = logs.value.filter(l => l.action === 'roll')
+    const today = new Date().toDateString()
+    const todayRolls = rollLogs.filter(l => {
+      const d = new Date(l.created_at)
+      return d.toDateString() === today
+    })
+    // 找出最爱摇菜的客户
+    const rollCount = {}
+    rollLogs.forEach(l => {
+      rollCount[l.customer_name] = (rollCount[l.customer_name] || 0) + 1
+    })
+    let topName = '-', topCnt = 0
+    for (const [name, cnt] of Object.entries(rollCount)) {
+      if (cnt > topCnt) { topName = name; topCnt = cnt }
+    }
+    rollStats.value = {
+      total: rollLogs.length,
+      today: todayRolls.length,
+      topCustomer: topName
+    }
     // 清理已不存在的选中项
     selectedIds.value = selectedIds.value.filter(id => logs.value.some(l => l.id === id))
     // 如果当前页超出总页数，翻到最后一页
@@ -221,6 +275,20 @@ async function logout() {
   white-space: nowrap; margin-left: 4px;
 }
 
+/* 摇菜统计 */
+.roll-stats { background: #fff8e8; margin: 10px 12px; border-radius: 10px; padding: 12px; border: 1px solid #f0e0c0; }
+.stats-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: #854f0b; }
+.stats-grid { display: flex; gap: 12px; }
+.stat-item { flex: 1; text-align: center; }
+.stat-num { font-size: 20px; font-weight: 600; color: #333; }
+.stat-label { font-size: 11px; color: #888; margin-top: 2px; }
+
+/* 操作筛选 */
+.action-filter {
+  padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px;
+  font-size: 13px; background: #fff;
+}
+
 .log-controls {
   display: flex; gap: 8px; padding: 12px;
 }
@@ -271,6 +339,10 @@ async function logout() {
 }
 .log-info { flex: 1; }
 .log-name { font-size: 14px; font-weight: 600; }
+.log-action { font-size: 10px; padding: 1px 5px; border-radius: 3px; margin-left: 4px; vertical-align: middle; }
+.action-login { background: #E6F1FB; color: #185FA5; }
+.action-roll { background: #FAEEDA; color: #854F0B; }
+.log-detail { font-size: 12px; color: #555; margin-top: 2px; }
 .log-time { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
 .log-location { font-size: 11px; color: #888; margin-top: 2px; }
 .log-ip { font-size: 11px; color: #aaa; margin-top: 1px; font-family: monospace; }

@@ -9,8 +9,9 @@ ALTER TABLE settings ADD COLUMN IF NOT EXISTS tab_history_enabled BOOLEAN DEFAUL
 ALTER TABLE settings ADD COLUMN IF NOT EXISTS tab_roll_enabled BOOLEAN DEFAULT true;
 ALTER TABLE settings ADD COLUMN IF NOT EXISTS tab_note_enabled BOOLEAN DEFAULT true;
 
--- 2. access_logs 表：添加地区字段
+-- 2. access_logs 表：添加地区+详情字段
 ALTER TABLE access_logs ADD COLUMN IF NOT EXISTS location TEXT DEFAULT '';
+ALTER TABLE access_logs ADD COLUMN IF NOT EXISTS detail TEXT DEFAULT '';
 
 -- 3. Edge Function部署说明
 -- 部署IP地区查询函数（终端执行）：
