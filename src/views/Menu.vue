@@ -1,23 +1,26 @@
 <template>
   <div class="menu-page">
-    <!-- 顶部标题栏 -->
+    <!-- 顶部标题栏 + 公告栏合并 -->
     <header class="top-bar">
-      <img v-if="settings.logo_url" :src="settings.logo_url" class="logo" @error="onLogoError" @dblclick="showVersionPopup = true" />
-      <div v-else class="logo-default" @dblclick="showVersionPopup = true">🍳</div>
-      <h1>{{ settings.shop_name }}</h1>
-      <div class="header-right">
-        <span v-if="customerName" class="customer-badge">💎 {{ customerName }}</span>
-      </div>
-    </header>
-
-    <!-- 公告栏（滚动显示） -->
-    <div v-if="settings.announcement_enabled && settings.announcement" class="announcement-bar">
-      <div class="announcement-scroll-wrap">
-        <div class="announcement-scroll">
-          <span class="announcement-text">📢 {{ settings.announcement }}</span>
+      <div class="top-bar-row">
+        <img v-if="settings.logo_url" :src="settings.logo_url" class="logo" @error="onLogoError" @dblclick="showVersionPopup = true" />
+        <div v-else class="logo-default" @dblclick="showVersionPopup = true">🍳</div>
+        <h1>{{ settings.shop_name }}</h1>
+        <div class="header-right">
+          <span v-if="customerName" class="customer-badge">💎 {{ customerName }}</span>
+          <button v-if="customerName" class="logout-btn" @click="doLogout">退出</button>
         </div>
       </div>
-    </div>
+      <!-- 公告栏嵌入标题栏底部 -->
+      <div v-if="customerName && settings.announcement_enabled && settings.announcement" class="header-announce">
+        <span class="header-announce-icon">📢</span>
+        <div class="announcement-scroll-wrap">
+          <div class="announcement-scroll">
+            <span class="announcement-text">{{ settings.announcement }}</span>
+          </div>
+        </div>
+      </div>
+    </header>
 
         <div v-if="!customerName" class="name-modal">
           <div class="name-box">
@@ -35,7 +38,7 @@
           </div>
         </div>
 
-    <!-- 登录后的页签导航 + 退出登录 -->
+    <!-- 登录后的页签导航 -->
     <nav v-if="customerName" class="tab-nav">
       <div class="tab-group">
         <button
@@ -57,7 +60,6 @@
           <span v-if="noteUnread > 0" class="tab-unread">{{ noteUnread }}</span>
         </button>
       </div>
-      <button class="logout-btn" @click="doLogout">退出</button>
     </nav>
 
     <!-- ========== 点菜页签 ========== -->
@@ -72,13 +74,21 @@
         >{{ cat }}</button>
       </nav>
 
+      <!-- 菜品搜索 -->
+      <div class="dish-search">
+        <div class="search-wrap">
+          <input v-model="searchKeyword" placeholder="🔍 搜索菜名…" class="search-input" @input="activeCategory = '全部'" />
+          <span v-if="searchKeyword" class="search-clear" @click="searchKeyword = ''">✕</span>
+        </div>
+      </div>
+
       <!-- 菜品列表 -->
       <div class="dish-list">
         <div v-for="dish in filteredDishes" :key="dish.id" class="dish-card" @click="showDishDetail(dish)">
           <div class="dish-img">
             <img v-if="dish.image_url" :src="dish.image_url" loading="lazy" decoding="async" />
             <div v-else class="img-placeholder">暂无图片</div>
-            <span v-if="dish.category" :class="['cat-tag', 'cat-' + dish.category]">{{ dish.category }}</span>
+            <span v-if="dish.category" :class="['cat-tag', 'cat-' + dish.category]">{{ displayCategory(dish.category) }}</span>
           </div>
           <div class="dish-info">
             <h3>{{ dish.name }}</h3>
@@ -153,7 +163,7 @@
             <div v-else class="detail-dish-ph">🍽️</div>
             <div class="detail-dish-info">
               <div class="detail-dish-name-row">
-                <span v-if="item.category" :class="['detail-cat-tag', 'cat-' + item.category]">{{ item.category }}</span>
+                <span v-if="item.category" :class="['detail-cat-tag', 'cat-' + item.category]">{{ displayCategory(item.category) }}</span>
                 <strong>{{ item.name }}</strong>
               </div>
               <span class="detail-cook-time">⏱ {{ item.cook_time }}分钟</span>
@@ -183,7 +193,7 @@
           <div v-else class="cart-item-img-ph"></div>
           <div class="cart-item-info">
             <h4>
-              <span v-if="item.category" :class="['detail-cat-tag', 'cat-' + item.category]">{{ item.category }}</span>
+              <span v-if="item.category" :class="['detail-cat-tag', 'cat-' + item.category]">{{ displayCategory(item.category) }}</span>
               {{ item.name }}
             </h4>
             <p class="cart-item-time">{{ item.cook_time }}分钟</p>
@@ -312,7 +322,7 @@
           <img v-if="detailDish.image_url" :src="detailDish.image_url" class="detail-img" loading="lazy" decoding="async" />
         <div v-else class="detail-img-ph"></div>
         <h2>{{ detailDish.name }}</h2>
-        <p>分类：{{ detailDish.category }} | {{ detailDish.temperature }}</p>
+        <p>分类：{{ displayCategory(detailDish.category) }} | {{ detailDish.temperature }}</p>
         <p>耗时：{{ detailDish.cook_time }}分钟</p>
         <div class="flavor-tags">
           <span v-for="f in detailDish.flavor" :key="f" class="flavor-tag">{{ f }}</span>
@@ -380,7 +390,7 @@
         <div class="roll-categories">
           <label v-for="cat in allCategories" :key="cat" :class="['roll-cat-label', 'roll-cat-' + cat]">
             <input type="checkbox" :value="cat" v-model="rollSelectedCats" />
-            {{ cat }}
+            {{ displayCategory(cat) }}
           </label>
           <span class="roll-cat-hint">不选 = 全部</span>
         </div>
@@ -423,7 +433,7 @@
         <div v-if="cartItems.length > 0" class="roll-cart-list">
           <div class="roll-cart-title">🛒 已选菜品（{{ cartItems.length }}道）</div>
           <div v-for="(item, idx) in cartItems" :key="idx" class="roll-cart-item">
-            <span :class="['roll-cart-tag', 'tag-' + (item.category || '其他')]">{{ item.category || '其他' }}</span>
+            <span :class="['roll-cart-tag', 'tag-' + (item.category || '其他')]">{{ displayCategory(item.category || '其他') }}</span>
             <span class="roll-cart-name">{{ item.name }}</span>
             <span class="roll-cart-qty">×{{ item.quantity || 1 }}</span>
             <span class="roll-cart-del" @click="removeFromCart(item.id)">✕</span>
@@ -460,15 +470,16 @@ function onLogoError() {
 // 页签状态
 const currentTab = ref('menu')
 
-const categories = ['全部', '荤', '素', '汤', '粉面', '主食']
+const categories = ['全部', '荤', '素', '汤', '面', '主']
 const activeCategory = ref('全部')
+const searchKeyword = ref('')
 // 分类名映射（兼容旧数据：数据库里可能还是"荤菜"等旧名）
 const categoryNameMap = {
   '荤': ['荤', '荤菜'],
   '素': ['素', '素菜'],
   '汤': ['汤', '汤类'],
-  '粉面': ['粉面', '粉面类'],
-  '主食': ['主食']
+  '面': ['粉面', '粉面类'],
+  '主': ['主食']
 }
 const dishes = ref([])
 const customerName = ref('')
@@ -976,6 +987,11 @@ const allCategories = computed(() => {
   const cats = new Set(dishes.value.map(d => d.category).filter(Boolean))
   return Array.from(cats)
 })
+// 分类显示映射（数据库存"粉面"但界面显示"面"）
+function displayCategory(cat) {
+  const map = { '粉面': '面', '粉面类': '面', '主食': '主' }
+  return map[cat] || cat
+}
 // 菜品加载后自动全选所有分类
 watch(allCategories, (cats) => {
   if (cats.length > 0 && rollSelectedCats.value.length === 0) {
@@ -1009,13 +1025,13 @@ function doRoll() {
     const elapsed = Date.now() - startTime
     const r = pool[Math.floor(Math.random() * pool.length)]
     rollDisplayName.value = r.name
-    rollDisplayCat.value = r.category || ''
+    rollDisplayCat.value = displayCategory(r.category) || ''
     rollDisplayImg.value = r.image_url || ''
     if (elapsed >= duration) {
       hasRolled.value = true
       const winner = pool[Math.floor(Math.random() * pool.length)]
       rollResultName.value = winner.name
-      rollResultCat.value = winner.category || ''
+      rollResultCat.value = displayCategory(winner.category) || ''
       rollResultImg.value = winner.image_url || ''
       rollDisplayName.value = winner.name
       rollDisplayCat.value = winner.category || ''
@@ -1056,10 +1072,18 @@ function resetRoll() {
 }
 
 const filteredDishes = computed(() => {
-  if (activeCategory.value === '全部') return dishes.value
-  // 兼容新旧分类名
-  const names = categoryNameMap[activeCategory.value] || [activeCategory.value]
-  return dishes.value.filter(d => names.includes(d.category))
+  let list = dishes.value
+  // 分类过滤
+  if (activeCategory.value !== '全部') {
+    const names = categoryNameMap[activeCategory.value] || [activeCategory.value]
+    list = list.filter(d => names.includes(d.category))
+  }
+  // 模糊搜索
+  const kw = searchKeyword.value.trim().toLowerCase()
+  if (kw) {
+    list = list.filter(d => d.name.toLowerCase().includes(kw))
+  }
+  return list
 })
 
 const allIngredients = computed(() => {
@@ -1207,29 +1231,45 @@ function formatDate(dateStr) {
 .menu-page { max-width: 480px; margin: 0 auto; padding-bottom: 70px; }
 
 .top-bar {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 16px; background: var(--primary); color: #fff;
+  background: var(--primary); color: #fff;
 }
-.top-bar .logo { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.4); flex-shrink: 0; }
+.top-bar-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px;
+}
+.top-bar .logo { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.4); flex-shrink: 0; }
 .top-bar .logo-default {
-  width: 40px; height: 40px; border-radius: 50%;
+  width: 32px; height: 32px; border-radius: 50%;
   background: rgba(255,255,255,0.18);
   display: flex; align-items: center; justify-content: center;
-  font-size: 22px; flex-shrink: 0;
+  font-size: 18px; flex-shrink: 0;
 }
-.top-bar h1 { font-size: 18px; font-weight: 600; flex: 1; }
-.header-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: auto; margin-right: -10px; }
+.top-bar-row h1 { font-size: 16px; font-weight: 600; flex: 1; }
+.header-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: auto; }
 .customer-badge {
   font-size: 12px; color: rgba(255,255,255,0.9);
   background: rgba(255,255,255,0.15);
-  padding: 2px 10px; border-radius: 12px; white-space: nowrap;
-  margin-right: 8px;
+  padding: 1px 8px; border-radius: 12px; white-space: nowrap;
 }
+/* 标题栏内的退出按钮 */
+.top-bar-row .logout-btn {
+  padding: 2px 8px; border-radius: 4px; font-size: 11px;
+  background: rgba(255,255,255,0.2); color: #fff;
+  border: none; cursor: pointer; line-height: 1.6;
+}
+.top-bar-row .logout-btn:hover { background: rgba(255,255,255,0.3); }
+/* 标题栏内的公告 */
+.header-announce {
+  display: flex; align-items: center; gap: 4px;
+  padding: 2px 14px 6px; font-size: 12px;
+  color: rgba(255,255,255,0.75);
+}
+.header-announce-icon { flex-shrink: 0; font-size: 12px; }
 
 /* 页签导航 */
 .tab-nav {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 8px 16px; background: #fff;
+  display: flex; align-items: center;
+  padding: 6px 16px; background: #fff;
   border-bottom: 1px solid var(--border);
 }
 .tab-group { display: flex; gap: 2px; background: var(--bg); border-radius: 8px; padding: 2px; }
@@ -1318,10 +1358,24 @@ function formatDate(dateStr) {
 .cat-btn.cat-素.active { background: #43a047; color: #fff; border-color: #43a047; }
 .cat-btn.cat-汤 { color: #1e88e5; border-color: rgba(30,136,229,0.45); background: rgba(30,136,229,0.08); }
 .cat-btn.cat-汤.active { background: #1e88e5; color: #fff; border-color: #1e88e5; }
-.cat-btn.cat-粉面 { color: #f57c00; border-color: rgba(245,124,0,0.45); background: rgba(245,124,0,0.08); }
-.cat-btn.cat-粉面.active { background: #f57c00; color: #fff; border-color: #f57c00; }
-.cat-btn.cat-主食 { color: #333; border-color: rgba(0,0,0,0.25); background: rgba(0,0,0,0.05); }
-.cat-btn.cat-主食.active { background: #333; color: #fff; border-color: #333; }
+.cat-btn.cat-面 { color: #f57c00; border-color: rgba(245,124,0,0.45); background: rgba(245,124,0,0.08); }
+.cat-btn.cat-面.active { background: #f57c00; color: #fff; border-color: #f57c00; }
+.cat-btn.cat-主 { color: #333; border-color: rgba(0,0,0,0.25); background: rgba(0,0,0,0.05); }
+.cat-btn.cat-主.active { background: #333; color: #fff; border-color: #333; }
+
+/* 菜品搜索 */
+.dish-search { padding: 0 12px 8px; }
+.search-wrap { position: relative; }
+.dish-search .search-input {
+  width: 100%; padding: 8px 32px 8px 12px; border-radius: 8px; border: 1px solid #ddd;
+  font-size: 13px; box-sizing: border-box; outline: none;
+}
+.dish-search .search-input:focus { border-color: var(--primary); }
+.search-clear {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  font-size: 14px; color: #bbb; cursor: pointer; line-height: 1;
+}
+.search-clear:hover { color: #888; }
 
 /* 菜品卡片 */
 .dish-list { padding: 12px; display: grid; gap: 12px; }
@@ -1348,7 +1402,10 @@ function formatDate(dateStr) {
 .cat-tag.cat-荤 { background: rgba(229,57,53,0.78); }
 .cat-tag.cat-素 { background: rgba(67,160,71,0.78); }
 .cat-tag.cat-汤 { background: rgba(30,136,229,0.78); }
+.cat-tag.cat-面 { background: rgba(245,124,0,0.78); }
 .cat-tag.cat-粉面 { background: rgba(245,124,0,0.78); }
+.cat-tag.cat-粉面类 { background: rgba(245,124,0,0.78); }
+.cat-tag.cat-主 { background: rgba(0,0,0,0.55); }
 .cat-tag.cat-主食 { background: rgba(0,0,0,0.55); }
 .dish-info { flex: 1; min-width: 0; }
 .dish-info h3 { font-size: 15px; margin-bottom: 4px; }
@@ -1569,7 +1626,10 @@ function formatDate(dateStr) {
 .detail-cat-tag.cat-荤 { background: rgba(229,57,53,0.82); }
 .detail-cat-tag.cat-素 { background: rgba(67,160,71,0.82); }
 .detail-cat-tag.cat-汤 { background: rgba(30,136,229,0.82); }
+.detail-cat-tag.cat-面 { background: rgba(245,124,0,0.82); }
 .detail-cat-tag.cat-粉面 { background: rgba(245,124,0,0.82); }
+.detail-cat-tag.cat-粉面类 { background: rgba(245,124,0,0.82); }
+.detail-cat-tag.cat-主 { background: rgba(0,0,0,0.65); }
 .detail-cat-tag.cat-主食 { background: rgba(0,0,0,0.65); }
 .detail-dish-img { width: 52px; height: 52px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
 .detail-dish-ph {
@@ -1679,8 +1739,14 @@ function formatDate(dateStr) {
 .roll-cat-素 input { accent-color: #3b6d11; }
 .roll-cat-汤 { background: #e6f1fb; color: #185fa5; border: 1px solid #b5d4f4; }
 .roll-cat-汤 input { accent-color: #185fa5; }
+.roll-cat-面 { background: #faeeda; color: #854f0b; border: 1px solid #fac775; }
+.roll-cat-面 input { accent-color: #854f0b; }
 .roll-cat-粉面 { background: #faeeda; color: #854f0b; border: 1px solid #fac775; }
 .roll-cat-粉面 input { accent-color: #854f0b; }
+.roll-cat-粉面类 { background: #faeeda; color: #854f0b; border: 1px solid #fac775; }
+.roll-cat-粉面类 input { accent-color: #854f0b; }
+.roll-cat-主 { background: #eeedfe; color: #3c3489; border: 1px solid #cecbf6; }
+.roll-cat-主 input { accent-color: #3c3489; }
 .roll-cat-主食 { background: #eeedfe; color: #3c3489; border: 1px solid #cecbf6; }
 .roll-cat-主食 input { accent-color: #3c3489; }
 .roll-cat-凉菜 { background: #e1f5ee; color: #0f6e56; border: 1px solid #9fe1cb; }
@@ -1715,7 +1781,10 @@ function formatDate(dateStr) {
 .badge-荤 { background: #fcebeb; color: #a32d2d; }
 .badge-素 { background: #eaf3de; color: #3b6d11; }
 .badge-汤 { background: #e6f1fb; color: #185fa5; }
+.badge-面 { background: #faeeda; color: #854f0b; }
 .badge-粉面 { background: #faeeda; color: #854f0b; }
+.badge-粉面类 { background: #faeeda; color: #854f0b; }
+.badge-主 { background: #eeedfe; color: #3c3489; }
 .badge-主食 { background: #eeedfe; color: #3c3489; }
 .badge-凉菜 { background: #e1f5ee; color: #0f6e56; }
 .badge-小食 { background: #fbeaf0; color: #993556; }
@@ -1757,7 +1826,10 @@ function formatDate(dateStr) {
 .roll-cart-tag.tag-荤 { background: #fcebeb; color: #a32d2d; }
 .roll-cart-tag.tag-素 { background: #eaf3de; color: #3b6d11; }
 .roll-cart-tag.tag-汤 { background: #e6f1fb; color: #185fa5; }
+.roll-cart-tag.tag-面 { background: #faeeda; color: #854f0b; }
 .roll-cart-tag.tag-粉面 { background: #faeeda; color: #854f0b; }
+.roll-cart-tag.tag-粉面类 { background: #faeeda; color: #854f0b; }
+.roll-cart-tag.tag-主 { background: #eeedfe; color: #3c3489; }
 .roll-cart-tag.tag-主食 { background: #eeedfe; color: #3c3489; }
 .roll-cart-tag.tag-凉菜 { background: #e1f5ee; color: #0f6e56; }
 .roll-cart-tag.tag-小食 { background: #fbeaf0; color: #993556; }
@@ -1812,6 +1884,8 @@ function formatDate(dateStr) {
 .announcement-text {
   font-size: 12px; color: #b8860b;
 }
+/* 标题栏内的公告用白色文字 */
+.header-announce .announcement-text { color: rgba(255,255,255,0.85); }
 
 /* 页签未读数 */
 .tab-unread {

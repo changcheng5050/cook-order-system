@@ -469,6 +469,8 @@ async function logout() {
 .detail-cat-tag.cat-素菜 { background: rgba(67,160,71,0.85); }
 .detail-cat-tag.cat-汤类 { background: rgba(30,136,229,0.85); }
 .detail-cat-tag.cat-粉面类 { background: rgba(245,124,0,0.85); }
+.detail-cat-tag.cat-面 { background: rgba(245,124,0,0.85); }
+.detail-cat-tag.cat-主 { background: rgba(0,0,0,0.65); }
 
 .detail-note { font-size: 11px; color: #e55a2b; margin-left: 4px; }
 

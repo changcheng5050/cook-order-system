@@ -241,7 +241,7 @@ const dragIdx = ref(-1)  // 正在拖拽的卡片索引
 const dragOverIdx = ref(-1)  // 拖拽悬停的卡片索引
 const dragCardStyle = { opacity: '0.5' }  // 拖拽时卡片变淡
 
-const categoryOptions = ['荤', '素', '汤', '粉面', '主食']
+const categoryOptions = ['荤', '素', '汤', '面', '主']
 
 const form = ref({
   name: '',
