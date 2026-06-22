@@ -27,10 +27,11 @@
             <div v-if="nameError && !showApplyBtn" class="name-error">{{ nameError }}</div>
             <div v-if="nameError && showApplyBtn" class="name-error name-error-apply">{{ nameError }}</div>
             <button @click="verifyName" v-if="!showApplyBtn">进入菜单</button>
+            <p v-if="!showApplyBtn && !showRegisterForm" class="apply-link" @click="openRegisterForm">📋 没有账号？申请加入</p>
             <button v-if="showApplyBtn" class="btn-apply" @click="applyJoin">📋 申请加入</button>
             <button v-if="showApplyBtn || appliedMsg" class="btn-back-login" @click="resetLogin">已有账号？点此登录</button>
             <div v-if="appliedMsg" class="applied-msg">{{ appliedMsg }}</div>
-            <p class="version-text">v{{ version }}</p>
+            <p class="version-text">{{ version }}</p>
           </div>
         </div>
 
@@ -40,19 +41,19 @@
         <button
           :class="['tab-btn', { active: currentTab === 'menu' }]"
           @click="currentTab = 'menu'"
-        v-if="settings.tab_menu_enabled !== false">🥢 点菜</button>
+        v-if="settings.tab_menu_enabled !== false"><span class="tab-icon">🥢</span><span class="tab-label">点菜</span></button>
         <button
           :class="['tab-btn', { active: currentTab === 'history' }]"
           @click="currentTab = 'history'"
-        v-if="settings.tab_history_enabled !== false">⏰ 历史</button>
+        v-if="settings.tab_history_enabled !== false"><span class="tab-icon">⏰</span><span class="tab-label">历史</span></button>
         <button
           :class="['tab-btn', { active: currentTab === 'roll' }]"
           @click="currentTab = 'roll'"
-        v-if="settings.tab_roll_enabled !== false">🎰 摇菜</button>
+        v-if="settings.tab_roll_enabled !== false"><span class="tab-icon">🎰</span><span class="tab-label">摇菜</span></button>
         <button
           :class="['tab-btn', { active: currentTab === 'note' }]"
           @click="switchToChat"
-        v-if="settings.tab_note_enabled !== false">💬 递个纸条
+        v-if="settings.tab_note_enabled !== false"><span class="tab-icon">💬</span><span class="tab-label">递纸条</span>
           <span v-if="noteUnread > 0" class="tab-unread">{{ noteUnread }}</span>
         </button>
       </div>
@@ -75,7 +76,7 @@
       <div class="dish-list">
         <div v-for="dish in filteredDishes" :key="dish.id" class="dish-card" @click="showDishDetail(dish)">
           <div class="dish-img">
-            <img v-if="dish.image_url" :src="dish.image_url" />
+            <img v-if="dish.image_url" :src="dish.image_url" loading="lazy" decoding="async" />
             <div v-else class="img-placeholder">暂无图片</div>
             <span v-if="dish.category" :class="['cat-tag', 'cat-' + dish.category]">{{ dish.category }}</span>
           </div>
@@ -148,7 +149,7 @@
         <div v-if="expandedOrderId === order.id" class="order-detail">
           <p><strong>菜品：</strong></p>
           <div v-for="item in order.dishes" :key="item.id" class="detail-dish-item">
-            <img v-if="item.image_url" :src="item.image_url" class="detail-dish-img" @error="$event.target.style.display='none'" />
+            <img v-if="item.image_url" :src="item.image_url" class="detail-dish-img" loading="lazy" decoding="async" @error="$event.target.style.display='none'" />
             <div v-else class="detail-dish-ph">🍽️</div>
             <div class="detail-dish-info">
               <div class="detail-dish-name-row">
@@ -178,7 +179,7 @@
       <div class="modal-box cart-modal">
         <h2>我的餐桌</h2>
         <div v-for="item in cartItems" :key="item.id" class="cart-item">
-          <img v-if="item.image_url" :src="item.image_url" class="cart-item-img" />
+          <img v-if="item.image_url" :src="item.image_url" class="cart-item-img" loading="lazy" decoding="async" />
           <div v-else class="cart-item-img-ph"></div>
           <div class="cart-item-info">
             <h4>
@@ -259,7 +260,7 @@
         <div class="success-section">
           <h3>点菜详情</h3>
           <div v-for="item in successOrder.dishes" :key="item.id" class="success-dish">
-            <img v-if="item.image_url" :src="item.image_url" class="success-dish-img" />
+            <img v-if="item.image_url" :src="item.image_url" class="success-dish-img" loading="lazy" decoding="async" />
             <div v-else class="success-dish-ph"></div>
             <div class="success-dish-info">
               <h4>{{ item.name }}</h4>
@@ -308,7 +309,7 @@
       <div class="modal-box detail-modal">
         <button class="detail-close-x" @click="showDetail = false">✕</button>
         <div class="detail-body">
-          <img v-if="detailDish.image_url" :src="detailDish.image_url" class="detail-img" />
+          <img v-if="detailDish.image_url" :src="detailDish.image_url" class="detail-img" loading="lazy" decoding="async" />
         <div v-else class="detail-img-ph"></div>
         <h2>{{ detailDish.name }}</h2>
         <p>分类：{{ detailDish.category }} | {{ detailDish.temperature }}</p>
@@ -397,7 +398,7 @@
               <div v-if="!hasRolled" class="roll-col-label">🎰 摇一摇</div>
               <div v-else class="roll-col-label roll-col-label-win">🎯 摇到啦</div>
               <div class="roll-col-value roll-col-img">
-                <img v-if="rollDisplayImg" :src="rollDisplayImg" class="roll-result-img" />
+                <img v-if="rollDisplayImg" :src="rollDisplayImg" class="roll-result-img" loading="lazy" decoding="async" />
                 <span v-else style="font-size:32px;">🍽️</span>
               </div>
             </div>
@@ -445,7 +446,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, inject, watch, nextTick } from 'vue'
-import { supabase } from '../lib/supabase'
+import { supabase, supabaseUrl, supabaseKey as supabaseAnonKey } from '../lib/supabase'
 import { useCart } from '../lib/cart'
 
 const settings = inject('shopSettings')
@@ -474,6 +475,7 @@ const customerName = ref('')
 const nameInput = ref('')
 const nameError = ref('')
 const showApplyBtn = ref(false)
+const showRegisterForm = ref(false)
 const appliedMsg = ref('')
 const showCart = ref(false)
 const showDetail = ref(false)
@@ -713,18 +715,46 @@ async function applyJoin() {
 // 重置登录界面（从申请页面回到登录状态）
 function resetLogin() {
   showApplyBtn.value = false
+  showRegisterForm.value = false
   appliedMsg.value = ''
   nameError.value = ''
   nameInput.value = ''
 }
 
+function openRegisterForm() {
+  showRegisterForm.value = true
+  nameError.value = '请输入您要注册的用户名'
+  showApplyBtn.value = true
+}
+
 // ========== 访问日志 ==========
 async function logAccess(name) {
   try {
+    // 调用Supabase Edge Function获取IP和地区（异步，最多等2秒，不影响登录）
+    let ipAddress = ''
+    let location = ''
+    try {
+      const edgeUrl = `${supabaseUrl}/functions/v1/ipinfo`
+      const controller = new AbortController()
+      setTimeout(() => controller.abort(), 2000)
+      const res = await fetch(edgeUrl, {
+        headers: { 'Authorization': `Bearer ${supabaseAnonKey}` },
+        signal: controller.signal
+      })
+      if (res.ok) {
+        const data = await res.json()
+        ipAddress = data.ip || ''
+        location = data.location || ''
+      }
+    } catch (e) {
+      // Edge Function调用失败时静默跳过
+    }
     await supabase.from('access_logs').insert({
       customer_name: name,
       action: 'login',
-      user_agent: navigator.userAgent || ''
+      ip_address: ipAddress,
+      user_agent: navigator.userAgent || '',
+      location
     })
   } catch (e) {
     // 表不存在时静默忽略
@@ -1202,11 +1232,15 @@ function formatDate(dateStr) {
   padding: 8px 16px; background: #fff;
   border-bottom: 1px solid var(--border);
 }
-.tab-group { display: flex; gap: 4px; background: var(--bg); border-radius: 8px; padding: 2px; }
+.tab-group { display: flex; gap: 2px; background: var(--bg); border-radius: 8px; padding: 2px; }
 .tab-btn {
-  padding: 6px 18px; border-radius: 6px; font-size: 13px;
+  padding: 4px 12px; border-radius: 6px; font-size: 11px;
   background: transparent; color: var(--text-secondary); border: none; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  line-height: 1.2; min-width: 0;
 }
+.tab-btn .tab-icon { font-size: 18px; line-height: 1.2; }
+.tab-btn .tab-label { font-size: 11px; line-height: 1.2; }
 .tab-btn.active {
   background: var(--primary); color: #fff; font-weight: 500;
 }
@@ -1256,6 +1290,11 @@ function formatDate(dateStr) {
   border: 1px solid var(--primary); border-radius: 8px;
   font-size: 13px;
 }
+.apply-link {
+  text-align: center; font-size: 13px; color: var(--primary);
+  margin: 10px 0 0; cursor: pointer;
+}
+.apply-link:hover { color: #e55a2b; text-decoration: underline; }
 .name-box button {
   width: 100%; padding: 10px; background: var(--primary); color: #fff;
   border-radius: 8px; font-weight: 500; margin-top: 4px;

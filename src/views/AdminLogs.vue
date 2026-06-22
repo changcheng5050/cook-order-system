@@ -46,6 +46,8 @@
         <div class="log-info">
           <div class="log-name">{{ log.customer_name }}</div>
           <div class="log-time">{{ formatTime(log.created_at) }}</div>
+          <div v-if="log.location" class="log-location">📍 {{ log.location }}</div>
+          <div v-if="log.ip_address" class="log-ip">{{ log.ip_address }}</div>
         </div>
       </div>
     </div>
@@ -270,6 +272,8 @@ async function logout() {
 .log-info { flex: 1; }
 .log-name { font-size: 14px; font-weight: 600; }
 .log-time { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.log-location { font-size: 11px; color: #888; margin-top: 2px; }
+.log-ip { font-size: 11px; color: #aaa; margin-top: 1px; font-family: monospace; }
 
 /* 分页 */
 .pagination {

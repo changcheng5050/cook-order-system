@@ -51,7 +51,7 @@
         :class="{ 'drag-over': dragOverIdx === idx && dragIdx !== idx }"
         :style="dragIdx === idx ? dragCardStyle : {}"
       >
-        <img v-if="dish.image_url" :src="dish.image_url" class="admin-dish-img" />
+        <img v-if="dish.image_url" :src="dish.image_url" class="admin-dish-img" loading="lazy" decoding="async" />
         <div v-else class="admin-img-placeholder">无图</div>
         <div class="admin-dish-info">
           <h3>{{ dish.name }}</h3>

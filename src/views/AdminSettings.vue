@@ -70,7 +70,7 @@
         </label>
       </label>
       <label class="switch-row">
-        <span><span class="tab-icon">💬</span> 递个纸条</span>
+        <span><span class="tab-icon">💬</span> 递纸条</span>
         <label class="switch">
           <input type="checkbox" v-model="form.tab_note_enabled" />
           <span class="slider"></span>
