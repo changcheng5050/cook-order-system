@@ -380,12 +380,13 @@
     <!-- ========== 摇菜页签 ========== -->
     <div v-if="customerName && currentTab === 'roll'" class="roll-tab">
       <div class="roll-section">
-        <div class="roll-page-title">
-          <div class="roll-page-title-main">🎲 不知道吃啥？那就凭运气吧！</div>
-          <div class="roll-page-title-sub">选中分类，点击摇一摇，命运替你决定～</div>
+        <div class="roll-header">
+          <span class="roll-header-icon">🎰</span>
+          <div>
+            <div class="roll-header-title">不知道吃啥？那就凭运气吧！</div>
+            <div class="roll-subtitle">选中分类，点击摇一摇，命运替你决定～</div>
+          </div>
         </div>
-
-        <!-- 分类勾选（老虎机顶部） -->
         <div class="roll-categories">
           <label v-for="cat in allCategories" :key="cat" :class="['roll-cat-label', 'roll-cat-' + cat]">
             <input type="checkbox" :value="cat" v-model="rollSelectedCats" />
@@ -394,46 +395,35 @@
           <span class="roll-cat-hint">不选 = 全部</span>
         </div>
 
-        <!-- 老虎机主体 -->
         <div class="roll-machine">
-          <div class="roll-machine-top"></div>
-          <div class="roll-machine-title">R O L L</div>
           <div class="roll-window">
-            <!-- 左列：类别+菜名 -->
-            <div class="roll-col roll-col-info">
-              <div class="roll-col-label">类 别</div>
-              <div class="roll-col-value">
-                <span v-if="rollDisplayCat && rollDisplayCat !== '?'" :class="['roll-cat-circle', 'badge-' + rollDisplayCat]">{{ rollDisplayCat }}</span>
-                <span v-else style="font-size:24px;color:#666;">?</span>
+            <div class="roll-col">
+              <div class="roll-col-label">类</div>
+              <div class="roll-col-value roll-col-value-cat">
+                <span v-if="rollDisplayCat && rollDisplayCat !== '?'" :class="['roll-cat-badge', 'badge-' + rollDisplayCat]">{{ rollDisplayCat }}</span>
+                <span v-else style="font-size:24px;">?</span>
               </div>
-              <div class="roll-col-divider"></div>
-              <div class="roll-col-label">菜 名</div>
+            </div>
+            <div class="roll-col roll-col-main">
+              <div v-if="!hasRolled" class="roll-col-label">🎰 摇一摇</div>
+              <div v-else class="roll-col-label roll-col-label-win">🎯 摇到啦</div>
+              <div class="roll-col-value roll-col-img">
+                <img v-if="rollDisplayImg" :src="rollDisplayImg" class="roll-result-img" loading="lazy" decoding="async" />
+                <span v-else style="font-size:32px;">🍽️</span>
+              </div>
+            </div>
+            <div class="roll-col">
+              <div class="roll-col-label">菜名</div>
               <div class="roll-col-value roll-col-value-name">{{ rollDisplayName }}</div>
             </div>
-            <!-- 右列：大图 -->
-            <div class="roll-col roll-col-img-box">
-              <div class="roll-col-label">今 日 推 荐</div>
-              <div class="roll-col-value roll-col-img-area">
-                <img v-if="rollDisplayImg" :src="rollDisplayImg" class="roll-result-img" loading="lazy" decoding="async" />
-                <span v-else class="roll-img-placeholder">🍽️</span>
-              </div>
-            </div>
           </div>
-          <div class="roll-machine-bottom"></div>
         </div>
 
-        <!-- 摇一下按钮 -->
         <div class="roll-btn-row">
-          <button class="roll-btn-go" @click="doRoll" :disabled="rollRolling">🎲 {{ rollRolling ? '摇动中...' : '摇 一 下' }}</button>
+          <button class="roll-btn-go" @click="doRoll" :disabled="rollRolling">🎰 {{ rollRolling ? '摇动中...' : '摇一下！' }}</button>
         </div>
-
-        <!-- 结果区 -->
-        <div v-if="rollResultName" class="roll-result">
-          <span class="roll-result-icon">🎯</span>
-          <span class="roll-result-text">摇到啦！</span>
-          <span v-if="rollResultCat" :class="['roll-cat-badge-sm', 'badge-' + rollResultCat]">{{ rollResultCat }}</span>
-          <span class="roll-result-name">{{ rollResultName }}</span>
-          <button class="roll-btn-add-sm" @click="addRollToCart">🍽️ 加</button>
+        <div v-if="rollResultName" class="roll-btn-row">
+          <button class="roll-btn-add" @click="addRollToCart">🍽️ 加到餐桌</button>
         </div>
 
         <p v-if="rollCountMsg" class="roll-count">{{ rollCountMsg }}</p>
@@ -1740,11 +1730,10 @@ function formatDate(dateStr) {
 /* 摇菜 */
 .roll-tab { padding: 16px; }
 .roll-section {
-  background: #2a2a3e; border-radius: 20px; padding: 20px;
+  background: var(--color-background-primary); border-radius: var(--border-radius-lg);
+  border: 0.5px solid var(--color-border-tertiary); padding: 24px;
   max-width: 400px; margin: 0 auto;
-  border: 1px solid #4a4a6e;
 }
-
 .roll-subtitle { font-size: 13px; color: var(--text-secondary); margin: 0; }
 .roll-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
 .roll-header-icon { font-size: 32px; }
@@ -1752,128 +1741,59 @@ function formatDate(dateStr) {
 
 /* 分类标签 - 彩色标签（和点菜页面统一） */
 .roll-categories {
-  display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 14px;
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 18px;
 }
 .roll-cat-label {
-  display: flex; align-items: center; gap: 3px; font-size: 12px; cursor: pointer;
-  padding: 3px 8px; border-radius: 5px;
+  display: flex; align-items: center; gap: 4px; font-size: 13px; cursor: pointer;
+  padding: 4px 10px; border-radius: 6px;
 }
-.roll-cat-label input { width: 13px; height: 13px; }
-.roll-cat-hint { font-size: 11px; color: #888; margin-left: 4px; }
-.roll-cat-荤 { background: rgba(255,255,255,0.08); color: #f7c1c1; border: 1px solid rgba(255,255,255,0.1); }
+.roll-cat-label input { width: 16px; height: 16px; }
+.roll-cat-hint { font-size: 12px; color: #bbb; margin-left: 4px; }
+.roll-cat-荤 { background: #fcebeb; color: #a32d2d; border: 1px solid #f7c1c1; }
 .roll-cat-荤 input { accent-color: #a32d2d; }
-.roll-cat-素 { background: rgba(255,255,255,0.08); color: #c0dd97; border: 1px solid rgba(255,255,255,0.1); }
+.roll-cat-素 { background: #eaf3de; color: #3b6d11; border: 1px solid #c0dd97; }
 .roll-cat-素 input { accent-color: #3b6d11; }
-.roll-cat-汤 { background: rgba(255,255,255,0.08); color: #b5d4f4; border: 1px solid rgba(255,255,255,0.1); }
+.roll-cat-汤 { background: #e6f1fb; color: #185fa5; border: 1px solid #b5d4f4; }
 .roll-cat-汤 input { accent-color: #185fa5; }
-.roll-cat-面 { background: rgba(255,255,255,0.08); color: #fac775; border: 1px solid rgba(255,255,255,0.1); }
+.roll-cat-面 { background: #faeeda; color: #854f0b; border: 1px solid #fac775; }
 .roll-cat-面 input { accent-color: #854f0b; }
-.roll-cat-粉面 { background: rgba(255,255,255,0.08); color: #fac775; border: 1px solid rgba(255,255,255,0.1); }
+.roll-cat-粉面 { background: #faeeda; color: #854f0b; border: 1px solid #fac775; }
 .roll-cat-粉面 input { accent-color: #854f0b; }
-.roll-cat-粉面类 { background: rgba(255,255,255,0.08); color: #fac775; border: 1px solid rgba(255,255,255,0.1); }
+.roll-cat-粉面类 { background: #faeeda; color: #854f0b; border: 1px solid #fac775; }
 .roll-cat-粉面类 input { accent-color: #854f0b; }
-.roll-cat-主 { background: rgba(255,255,255,0.08); color: #cecbf6; border: 1px solid rgba(255,255,255,0.1); }
+.roll-cat-主 { background: #eeedfe; color: #3c3489; border: 1px solid #cecbf6; }
 .roll-cat-主 input { accent-color: #3c3489; }
-.roll-cat-主食 { background: rgba(255,255,255,0.08); color: #cecbf6; border: 1px solid rgba(255,255,255,0.1); }
+.roll-cat-主食 { background: #eeedfe; color: #3c3489; border: 1px solid #cecbf6; }
 .roll-cat-主食 input { accent-color: #3c3489; }
+.roll-cat-凉菜 { background: #e1f5ee; color: #0f6e56; border: 1px solid #9fe1cb; }
+.roll-cat-凉菜 input { accent-color: #0f6e56; }
+.roll-cat-小食 { background: #fbeaf0; color: #993556; border: 1px solid #f4c0d1; }
+.roll-cat-小食 input { accent-color: #993556; }
 
-/* 老虎机主体 */
+/* 老虎机窗口 */
 .roll-machine {
-  background: #1a1a30; border-radius: 12px; padding: 16px;
-  margin-bottom: 14px; position: relative;
+  background: #f5f5f5; border-radius: 12px; padding: 20px;
+  border: 2px solid #ddd; margin-bottom: 18px;
 }
-.roll-machine-title {
-  text-align: center; font-size: 13px; font-weight: 600; color: #d4a843;
-  letter-spacing: 6px; margin-bottom: 12px;
-}
-.roll-machine-top {
-  width: 80%; height: 3px; margin: -8px auto 10px;
-  background: #d4a843; border-radius: 2px; opacity: 0.6;
-}
-.roll-machine-bottom {
-  width: 60%; height: 2px; margin: 10px auto -4px;
-  background: #d4a843; border-radius: 1px; opacity: 0.3;
-}
-
-/* 页面标题 */
-.roll-page-title { text-align: center; margin-bottom: 14px; }
-.roll-page-title-main { font-size: 16px; font-weight: 600; color: #e0e0e0; margin-bottom: 4px; }
-.roll-page-title-sub { font-size: 12px; color: #999; }
-
 .roll-window {
-  display: flex; gap: 8px; justify-content: center;
-  min-height: 170px; height: 170px; align-items: stretch;
+  display: flex; gap: 10px; justify-content: center;
 }
-.roll-col { background: #0f0f1a; border-radius: 8px; overflow: hidden; border: 1px solid #333; display: flex; flex-direction: column; position: relative; height: 100%; }
-.roll-col-info { flex: 0 0 90px; display: flex; flex-direction: column; }
-.roll-col-img-box { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
+.roll-col {
+  flex: 1; max-width: 80px; overflow: hidden; border-radius: 10px;
+  background: #fff; border: 1px solid #eee; text-align: center;
+}
+.roll-col-main { flex: 2; max-width: none; border-color: #d85a30; border-width: 2px; }
 .roll-col-label {
-  padding: 4px; font-size: 10px; color: #666; text-align: center;
-  letter-spacing: 2px; background: #1a1a30;
+  padding: 4px; font-size: 12px; color: #888;
+  background: #f5f5f5; border-radius: 8px 8px 0 0;
 }
-.roll-col-divider { height: 1px; background: #333; margin: 0 12px; }
-.roll-col-value { padding: 8px 6px; text-align: center; min-height: 36px; }
-.roll-col-value-name { font-size: 14px; color: #e0e0e0; font-weight: 500; padding: 12px 6px; }
-
-/* 类别圆形标签 */
-.roll-cat-circle {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 48px; height: 48px; border-radius: 50%;
-  font-size: 16px; font-weight: 600;
+.roll-col-label-win { background: #fff3e0; color: #d85a30; }
+.roll-col-value { padding: 10px 6px; text-align: center; }
+.roll-col-value-cat { font-size: 24px; padding: 36px 6px; display: flex; align-items: center; justify-content: center; }
+.roll-cat-badge {
+  display: inline-block; padding: 6px 12px; border-radius: 6px;
+  font-size: 14px; font-weight: 500;
 }
-
-/* 图片区域 */
-.roll-col-img-area {
-  flex: 1; display: flex; align-items: center; justify-content: center;
-  padding: 0; overflow: hidden; position: relative;
-}
-.roll-result-img {
-  position: absolute; top: 0; left: 0;
-  width: 100%; height: 100%; object-fit: cover; display: block;
-}
-.roll-img-placeholder { font-size: 40px; opacity: 0.3; z-index: 1; }
-
-/* 摇一下按钮 */
-.roll-btn-row { text-align: center; }
-.roll-btn-go {
-  width: 100%; padding: 12px; background: #d4537e; color: #fff;
-  border: none; border-radius: 20px; font-size: 14px; font-weight: 500;
-  cursor: pointer; letter-spacing: 2px;
-}
-.roll-btn-go:disabled { opacity: 0.5; cursor: default; background: #666; }
-
-/* 结果区 */
-.roll-result {
-  display: flex; align-items: center; gap: 6px;
-  margin-top: 12px; padding: 8px 12px;
-  border: 1px solid rgba(212,168,67,0.5); border-radius: 10px;
-  background: rgba(212,168,67,0.08);
-}
-.roll-result-icon { font-size: 14px; }
-.roll-result-text { font-size: 12px; color: #d4a843; font-weight: 600; }
-.roll-cat-badge-sm {
-  font-size: 10px; padding: 1px 6px; border-radius: 4px;
-}
-.roll-result-name { font-size: 13px; color: #e0e0e0; font-weight: 500; flex: 1; }
-.roll-btn-add-sm {
-  padding: 4px 12px; border-radius: 10px; font-size: 11px;
-  background: transparent; color: #d4a843; border: 1px solid rgba(212,168,67,0.5);
-  cursor: pointer; flex-shrink: 0;
-}
-
-.roll-count { text-align: center; font-size: 11px; color: #999; margin-top: 8px; }
-.roll-added-msg { text-align: center; font-size: 12px; color: #a5d6a7; margin-top: 6px; }
-
-/* 已选菜品列表（深色适配） */
-.roll-cart-list { margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 10px; }
-.roll-cart-title { font-size: 12px; font-weight: 500; color: #ccc; margin-bottom: 6px; }
-.roll-cart-item {
-  display: flex; align-items: center; gap: 6px; padding: 5px 0;
-}
-.roll-cart-tag { font-size: 10px; padding: 1px 5px; border-radius: 3px; }
-.roll-cart-name { font-size: 12px; color: #ccc; flex: 1; }
-.roll-cart-qty { font-size: 11px; color: #888; }
-.roll-cart-del { font-size: 12px; color: #666; cursor: pointer; padding: 0 4px; }
 .badge-荤 { background: #fcebeb; color: #a32d2d; }
 .badge-素 { background: #eaf3de; color: #3b6d11; }
 .badge-汤 { background: #e6f1fb; color: #185fa5; }
@@ -1884,6 +1804,55 @@ function formatDate(dateStr) {
 .badge-主食 { background: #eeedfe; color: #3c3489; }
 .badge-凉菜 { background: #e1f5ee; color: #0f6e56; }
 .badge-小食 { background: #fbeaf0; color: #993556; }
+.roll-col-value-name { font-size: 18px; font-weight: 500; padding: 30px 6px; word-break: break-all; }
+.roll-col-img {
+  padding: 6px; display: flex; align-items: center; justify-content: center; min-height: 90px;
+}
+.roll-result-img {
+  width: 90px; height: 90px; border-radius: 8px; object-fit: cover; display: block;
+}
+
+/* 按钮 */
+.roll-btn-row { text-align: center; }
+.roll-btn-row + .roll-btn-row { margin-top: 8px; }
+.roll-btn-go {
+  background: var(--primary); color: #fff; font-size: 16px; font-weight: 500;
+  padding: 12px 44px; border-radius: 12px; margin-bottom: 0;
+}
+.roll-btn-go:disabled { opacity: 0.6; }
+.roll-btn-add {
+  background: #e3f2fd; color: #1565c0; font-size: 14px; font-weight: 500;
+  padding: 10px 28px; border-radius: 10px; border: 1px solid #bbdefb;
+}
+.roll-count { font-size: 12px; color: #bbb; text-align: center; margin: 12px 0 14px; }
+.roll-added-msg {
+  text-align: center; font-size: 13px; color: var(--success); margin-top: 8px;
+}
+
+/* 已选菜品列表 */
+.roll-cart-list { border-top: 1px solid #eee; padding-top: 12px; }
+.roll-cart-title { font-size: 14px; font-weight: 500; margin-bottom: 10px; }
+.roll-cart-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; background: #fafafa; border-radius: 8px; margin-bottom: 6px;
+}
+.roll-cart-tag {
+  font-size: 12px; padding: 2px 8px; border-radius: 4px; flex-shrink: 0;
+}
+.roll-cart-tag.tag-荤 { background: #fcebeb; color: #a32d2d; }
+.roll-cart-tag.tag-素 { background: #eaf3de; color: #3b6d11; }
+.roll-cart-tag.tag-汤 { background: #e6f1fb; color: #185fa5; }
+.roll-cart-tag.tag-面 { background: #faeeda; color: #854f0b; }
+.roll-cart-tag.tag-粉面 { background: #faeeda; color: #854f0b; }
+.roll-cart-tag.tag-粉面类 { background: #faeeda; color: #854f0b; }
+.roll-cart-tag.tag-主 { background: #eeedfe; color: #3c3489; }
+.roll-cart-tag.tag-主食 { background: #eeedfe; color: #3c3489; }
+.roll-cart-tag.tag-凉菜 { background: #e1f5ee; color: #0f6e56; }
+.roll-cart-tag.tag-小食 { background: #fbeaf0; color: #993556; }
+.roll-cart-name { flex: 1; font-size: 14px; }
+.roll-cart-qty { font-size: 13px; color: #999; flex-shrink: 0; }
+.roll-cart-del { font-size: 14px; color: #ccc; cursor: pointer; flex-shrink: 0; }
+.roll-cart-del:hover { color: #e55a2b; }
 
 /* 版本号弹窗 */
 .version-popup {
