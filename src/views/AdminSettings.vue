@@ -94,7 +94,7 @@
       </p>
     </div>
 
-    <div class="settings-version">阿旺小厨房 v2.3.0</div>
+    <div class="settings-version">阿旺小厨房 v2.4.0</div>
   </div>
 </template>
 

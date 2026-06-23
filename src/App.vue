@@ -10,7 +10,7 @@
 import { ref, provide, onMounted } from 'vue'
 import { supabase } from './lib/supabase'
 
-const version = ref('v2.3.0')
+const version = ref('v2.4.0')
 
 const shopSettings = ref({
   shop_name: '阿旺小厨房',

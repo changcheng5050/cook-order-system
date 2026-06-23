@@ -347,7 +347,7 @@
     <div v-if="customerName && currentTab === 'note'" class="note-tab">
       <div class="note-chat-history" ref="noteHistoryRef">
         <div v-if="noteMessages.length === 0" class="chat-empty-tip">
-          📝 给大厨写句话吧～
+          🗣️ 跟阿旺唠两句～
         </div>
         <div v-for="(msg, idx) in noteMessages" :key="idx"
           :class="['note-bubble', msg.sender === 'customer' ? 'mine' : 'theirs']">
@@ -470,7 +470,7 @@ import { supabase, supabaseUrl, supabaseKey as supabaseAnonKey } from '../lib/su
 import { useCart } from '../lib/cart'
 
 const settings = inject('shopSettings')
-const version = ref('v2.3.0')  // v2.3.0: 客户界面文案优化（订单→点菜）
+const version = ref('v2.4.0')  // v2.4.0: 提示文案优化 + 日志卡片点击选中
 
 // Logo 图片加载失败时，清除 url 让默认图标显示
 function onLogoError() {

@@ -64,8 +64,8 @@
 
     <div class="log-list">
       <div v-if="pagedLogs.length === 0" class="empty-tip">暂无访问记录</div>
-      <div v-for="log in pagedLogs" :key="log.id" class="log-card">
-        <input v-if="batchMode" type="checkbox" :checked="selectedIds.includes(log.id)" @change="toggleSelect(log.id)" class="log-checkbox" />
+      <div v-for="log in pagedLogs" :key="log.id" class="log-card" :class="{ 'log-card-selected': batchMode && selectedIds.includes(log.id) }" @click="batchMode && toggleSelect(log.id)">
+        <input v-if="batchMode" type="checkbox" :checked="selectedIds.includes(log.id)" class="log-checkbox" />
         <div class="log-avatar">{{ log.customer_name.charAt(0).toUpperCase() }}</div>
         <div class="log-info">
           <div class="log-name">{{ log.customer_name }} <span :class="['log-action', 'action-' + log.action]">{{ log.action === 'roll' ? '🎰摇菜' : '🔑登录' }}</span></div>
@@ -328,9 +328,12 @@ async function logout() {
 .log-card {
   display: flex; gap: 12px; align-items: center;
   background: #fff; border-radius: 10px; padding: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 8px; cursor: default;
 }
-.log-checkbox { width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; }
+.log-card-selected {
+  background: #e8f0fe !important; border: 1px solid var(--primary);
+}
+.log-checkbox { width: 18px; height: 18px; flex-shrink: 0; pointer-events: none; }
 .log-avatar {
   width: 36px; height: 36px; border-radius: 50%;
   background: var(--primary-gradient); color: #fff;
