@@ -1254,14 +1254,14 @@ function formatDate(dateStr) {
 </script>
 
 <style scoped>
-.menu-page { max-width: 480px; margin: 0 auto; padding-bottom: 70px; }
+.menu-page { max-width: 480px; margin: 0 auto; padding-bottom: 105px; }
 
 .top-bar {
   background: var(--primary); color: #fff;
 }
 .top-bar-row {
   display: flex; align-items: center; gap: 8px;
-  padding: 8px 14px;
+  padding: 10px 14px 6px;
 }
 .top-bar .logo { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.4); flex-shrink: 0; }
 .top-bar .logo-default {
@@ -1287,29 +1287,37 @@ function formatDate(dateStr) {
 /* 标题栏内的公告 */
 .header-announce {
   display: flex; align-items: center; gap: 4px;
-  padding: 2px 14px 6px; font-size: 12px;
+  padding: 0 14px 4px; font-size: 12px;
   color: rgba(255,255,255,0.75);
 }
 .header-announce-icon { flex-shrink: 0; font-size: 12px; }
 
-/* 页签导航 */
+/* 底部导航栏 */
 .tab-nav {
-  display: flex; align-items: center;
-  padding: 6px 16px; background: #fff;
-  border-bottom: 1px solid var(--border);
+  position: fixed; bottom: 0; left: 0; right: 0;
+  z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  padding: 4px 12px calc(6px + env(safe-area-inset-bottom, 0px));
+  background: #fcf6f8;
+  border-top: 1px solid #f0e0e4;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
 }
-.tab-group { display: flex; gap: 2px; background: var(--bg); border-radius: 8px; padding: 2px; }
+.tab-group {
+  display: flex; gap: 6px; width: 100%;
+  max-width: 400px; justify-content: center;
+}
 .tab-btn {
-  padding: 4px 12px; border-radius: 6px; font-size: 11px;
-  background: transparent; color: var(--text-secondary); border: none; cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; gap: 1px;
-  line-height: 1.2; min-width: 0;
+  flex: 1; padding: 4px 6px; border-radius: 12px; font-size: 13px;
+  background: transparent; color: #999; border: none; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  line-height: 1.1; min-width: 0; transition: all 0.15s;
 }
-.tab-btn .tab-icon { font-size: 18px; line-height: 1.2; }
-.tab-btn .tab-label { font-size: 11px; line-height: 1.2; }
+.tab-btn .tab-icon { font-size: 22px; line-height: 1.2; }
+.tab-btn .tab-label { font-size: 13px; line-height: 1.2; font-weight: 500; }
 .tab-btn.active {
-  background: var(--primary); color: #fff; font-weight: 500;
+  background: var(--primary); color: #fff; font-weight: 600;
 }
+.tab-btn.active .tab-icon { color: #fff; }
 .logout-btn {
   padding: 5px 12px; border-radius: 6px; font-size: 12px;
   background: #fff0f0; color: #e55a2b; border: 1px solid #ffcccc; cursor: pointer;
@@ -1368,7 +1376,7 @@ function formatDate(dateStr) {
 
 /* 分类导航 */
 .category-nav {
-  display: flex; gap: 8px; padding: 10px 16px; overflow-x: auto;
+  display: flex; gap: 8px; padding: 8px 16px 6px; overflow-x: auto;
   background: #fff;
 }
 .cat-btn {
@@ -1390,7 +1398,7 @@ function formatDate(dateStr) {
 .cat-btn.cat-主.active { background: #333; color: #fff; border-color: #333; }
 
 /* 菜品搜索 */
-.dish-search { padding: 0 12px 8px; }
+.dish-search { padding: 0 12px 4px; }
 .search-wrap { position: relative; }
 .dish-search .search-input {
   width: 100%; padding: 8px 32px 8px 12px; border-radius: 8px; border: 1px solid #ddd;
@@ -1404,7 +1412,7 @@ function formatDate(dateStr) {
 .search-clear:hover { color: #888; }
 
 /* 菜品卡片 */
-.dish-list { padding: 12px; display: grid; gap: 12px; }
+.dish-list { padding: 8px 12px; display: grid; gap: 12px; }
 .dish-card {
   display: flex; gap: 12px; background: #fff; border-radius: 12px;
   padding: 12px; align-items: center;
@@ -1458,10 +1466,10 @@ function formatDate(dateStr) {
 
 /* 底部购物车 */
 .cart-bar {
-  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+  position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%);
   width: 100%; max-width: 480px; background: #fff;
   border-top: 1px solid var(--border); padding: 10px 16px;
-  display: flex; align-items: center; gap: 12px; z-index: 50; cursor: pointer;
+  display: flex; align-items: center; gap: 12px; z-index: 90; cursor: pointer;
 }
 .cart-icon { position: relative; font-size: 24px; }
 .cart-count {
@@ -1978,11 +1986,11 @@ function formatDate(dateStr) {
 }
 .note-bubble.mine .bubble-time { text-align: right; }
 .note-input-area {
-  position: fixed; left: 0; right: 0; bottom: 0;
+  position: fixed; left: 0; right: 0; bottom: 50px;
   padding: 8px 12px;
   padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--border); background: #fff;
-  z-index: 20; max-width: 480px; margin: 0 auto;
+  z-index: 90; max-width: 480px; margin: 0 auto;
 }
 .note-input-row {
   display: flex; gap: 8px;
