@@ -14,19 +14,19 @@
 
     <!-- 摇菜统计面板 -->
     <div class="roll-stats" v-if="rollStats.total > 0">
-      <div class="stats-title">🎰 摇菜统计</div>
+      <div class="stats-title">🎰 随机统计</div>
       <div class="stats-grid">
         <div class="stat-item">
           <div class="stat-num">{{ rollStats.total }}</div>
-          <div class="stat-label">总摇菜次数</div>
+          <div class="stat-label">总随机次数</div>
         </div>
         <div class="stat-item">
           <div class="stat-num">{{ rollStats.today }}</div>
-          <div class="stat-label">今日摇菜</div>
+          <div class="stat-label">今日随机</div>
         </div>
         <div class="stat-item">
           <div class="stat-num">{{ rollStats.topCustomer }}</div>
-          <div class="stat-label">最爱摇菜的客户</div>
+          <div class="stat-label">最爱随机的客户</div>
         </div>
       </div>
     </div>
@@ -36,7 +36,7 @@
       <select v-model="actionFilter" class="action-filter">
         <option value="">全部</option>
         <option value="login">登录</option>
-        <option value="roll">摇菜</option>
+        <option value="roll">随机</option>
       </select>
       <button class="btn-refresh" @click="loadLogs">🔄 刷新</button>
       <button class="btn-batch-del" :class="{ active: batchMode }" @click="toggleBatch">
@@ -68,7 +68,7 @@
         <input v-if="batchMode" type="checkbox" :checked="selectedIds.includes(log.id)" class="log-checkbox" />
         <div class="log-avatar">{{ log.customer_name.charAt(0).toUpperCase() }}</div>
         <div class="log-info">
-          <div class="log-name">{{ log.customer_name }} <span :class="['log-action', 'action-' + log.action]">{{ log.action === 'roll' ? '🎰摇菜' : '🔑登录' }}</span></div>
+          <div class="log-name">{{ log.customer_name }} <span :class="['log-action', 'action-' + log.action]">{{ log.action === 'roll' ? '🎰随机' : '🔑登录' }}</span></div>
           <div class="log-time">{{ formatTime(log.created_at) }}</div>
           <div v-if="log.detail" class="log-detail">{{ log.detail }}</div>
           <div v-if="log.location" class="log-location">📍 {{ log.location }}</div>

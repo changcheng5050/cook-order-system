@@ -44,7 +44,7 @@
         <button
           :class="['tab-btn', { active: currentTab === 'menu' }]"
           @click="currentTab = 'menu'"
-        v-if="settings.tab_menu_enabled !== false"><span class="tab-icon">🥢</span><span class="tab-label">点菜</span></button>
+        v-if="settings.tab_menu_enabled !== false"><span class="tab-icon">🥢</span><span class="tab-label">菜单</span></button>
         <button
           :class="['tab-btn', { active: currentTab === 'history' }]"
           @click="currentTab = 'history'"
@@ -52,7 +52,7 @@
         <button
           :class="['tab-btn', { active: currentTab === 'roll' }]"
           @click="currentTab = 'roll'"
-        v-if="settings.tab_roll_enabled !== false"><span class="tab-icon">🎰</span><span class="tab-label">摇菜</span></button>
+        v-if="settings.tab_roll_enabled !== false"><span class="tab-icon">🎰</span><span class="tab-label">随机</span></button>
         <button
           :class="['tab-btn', { active: currentTab === 'note' }]"
           @click="switchToChat"
@@ -347,7 +347,7 @@
     <div v-if="customerName && currentTab === 'note'" class="note-tab">
       <div class="note-chat-history" ref="noteHistoryRef">
         <div v-if="noteMessages.length === 0" class="chat-empty-tip">
-          🗣️ 跟阿旺唠两句～
+          🗣️ 给阿旺留个言~~
         </div>
         <div v-for="(msg, idx) in noteMessages" :key="idx"
           :class="['note-bubble', msg.sender === 'customer' ? 'mine' : 'theirs']">
@@ -382,7 +382,7 @@
       <div class="roll-section">
         <div class="roll-page-title">
           <div class="roll-page-title-main">🎲 不知道吃啥？那就凭运气吧！</div>
-          <div class="roll-page-title-sub">选中分类，点击摇一摇，命运替你决定～</div>
+          <div class="roll-page-title-sub">选中分类，点击开始，命运替你决定～</div>
         </div>
 
         <!-- 分类勾选（老虎机顶部） -->
@@ -397,7 +397,7 @@
         <!-- 老虎机主体 -->
         <div class="roll-machine">
           <div class="roll-machine-top"></div>
-          <div class="roll-machine-title">R O L L</div>
+          <div class="roll-machine-title">随 机</div>
           <div class="roll-window">
             <!-- 左列：类别+菜名 -->
             <div class="roll-col roll-col-info">
@@ -424,13 +424,13 @@
 
         <!-- 摇一下按钮 -->
         <div class="roll-btn-row">
-          <button class="roll-btn-go" @click="doRoll" :disabled="rollRolling">🎲 {{ rollRolling ? '摇动中...' : '摇 一 下' }}</button>
+          <button class="roll-btn-go" @click="doRoll" :disabled="rollRolling">🎲 {{ rollRolling ? '随机中...' : '开 始' }}</button>
         </div>
 
         <!-- 结果区 -->
         <div v-if="rollResultName" class="roll-result">
           <span class="roll-result-icon">🎯</span>
-          <span class="roll-result-text">摇到啦！</span>
+          <span class="roll-result-text">选中啦！</span>
           <span v-if="rollResultCat" :class="['roll-cat-badge-sm', 'badge-' + rollResultCat]">{{ rollResultCat }}</span>
           <span class="roll-result-name">{{ rollResultName }}</span>
           <button class="roll-btn-add-sm" @click="addRollToCart">🍽️ 加</button>
@@ -788,7 +788,7 @@ async function logRoll(name, dishName, category) {
     await supabase.from('access_logs').insert({
       customer_name: name,
       action: 'roll',
-      detail: `🎰 摇到：${dishName}（${category}）`,
+      detail: `🎰 随机到：${dishName}（${category}）`,
       user_agent: navigator.userAgent || ''
     })
   } catch (e) {
